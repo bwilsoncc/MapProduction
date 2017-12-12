@@ -8,10 +8,13 @@
 # If they are not in use then specify thier value to 0.  
 # ---------------------------------------------------------------------------
 
-DataFrameMinX=2.0
-DataFrameMinY=2.0
-DataFrameMaxX=19.0
-DataFrameMaxY=16.0
+# Clatsop County
+# 2017-12-11 -- Brian converted this file from GeoModel/Clatsop/MapProduction18x24.ini
+
+DataFrameMinX= 0.4
+DataFrameMinY= 0.5
+DataFrameMaxX= 19.9 + DataFrameMinX
+DataFrameMaxY= 17.5 + DataFrameMinY
 TitleX=10.5
 TitleY=17.8411
 DisclaimerX=2.5684
@@ -30,9 +33,13 @@ NorthX=0
 NorthY=0
 MapAngle=0
 
-CountyName='DESCHUTES COUNTY'
-CountyNameDist=0.4
-MapScaleDist=0.7361
+CountyName='Clatsop County, Oregon'
 MaxCancelledRows = 100
 CancelledSortField='OBJECTID'
 CancelledNumberPrefix='Cancelled Nos.'
+
+;CONTROL DISTANCE BETWEEN MAPTITLE AND COUNTY NAME
+CountyNameDist=-0.25
+
+;CONTROL DISTANCE BETWEEN MAPTITLE AND MAPSCALE VALUE
+MapScaleDist=0.15
