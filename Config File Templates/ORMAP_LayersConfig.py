@@ -1,8 +1,8 @@
 # ---------------------------------------------------------------------------
-# OrmapLayersConfig.py
+# ORMAP_LayersConfig.py
 # Created by: Shad Campbell
 # Date: 3/11/2011
-# Updated by: 
+# Updated by: Brian Wilson for Clatsop County 12/12/2017
 # Description: This is a configuration file to be customized by each county.
 # Do not delete any of the items in this file.  If they are not in use then
 # specify thier value and/or definition query  to "".
