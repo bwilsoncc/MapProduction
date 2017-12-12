@@ -52,6 +52,9 @@ def printMap(mapNumber):
         elif  printType=="TIFF":
             arcpy.AddMessage("Exporting to " + outputPath + "\\" + mapNumber + ".tif")
             arcpy.mapping.ExportToTIFF(MXD, outputPath + "\\" + mapNumber + ".tif", "PAGE_LAYOUT", resolution=res, tiff_compression=tifCompression)
+        elif  printType=="JPEG":
+            arcpy.AddMessage("Exporting to " + outputPath + "\\" + mapNumber + ".jpg")
+            arcpy.mapping.ExportToJPEG(MXD, outputPath + "\\" + mapNumber + ".jpg", "PAGE_LAYOUT", resolution=res)
         else:
             arcpy.AddMessage("Unrecognized Print format.  Unable to print map.")
 
