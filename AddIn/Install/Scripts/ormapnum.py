@@ -54,10 +54,10 @@ class ormapnum(object):
         
         d_qtr = {
                 '0' : '',
-                'A' : "N.E.1/4",
-                'B' : "N.W.1/4", 
-                'C' : "S.W.1/4",
-                'D' : "S.E.1/4"
+                'A' : "NE 1/4",
+                'B' : "NW 1/4", 
+                'C' : "SW 1/4",
+                'D' : "SE 1/4"
                 }
 
         if self.quarter == '0':

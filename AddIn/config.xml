@@ -2,13 +2,13 @@
   <Name>ORMAP Map Production Toolbar</Name>
   <AddInID>{a085f8d7-92ef-4d2f-ac7b-d57cd13009b4}</AddInID>
   <Description>Map Production Toolbar</Description>
-  <Version>1.0</Version>
+  <Version>1.05</Version>
   <Image />
   <Author>Shad Campbell</Author>
-  <Company>ORMAP</Company>
-  <Date>04/09/2012</Date>
+  <Company>ORMAP Clatsop County version</Company>
+  <Date>12/12/2017</Date>
   <Targets>
-    <Target name="Desktop" version="10.1" />
+    <Target name="Desktop" version="10.5" />
   </Targets>
   <AddIn language="PYTHON" library="ORMAP_MapProduction.py" namespace="ORMAP_MapProduction">
     <ArcMap>
@@ -28,7 +28,7 @@
     <Button caption="Page Layout Element Report" category="ORMAP Map Production" class="PageLayoutElementReport" id="ORMAP_MapProduction.PageLayoutElementReport" image="Images\PageLayoutElementsReport.png" message="Get a report of all the page elements and thier locations.  This is useful for determining which elements need to be renamed or modified." tip="Get a Page Layout Element Report">
       <Help heading="" />
     </Button>
-    <Button caption="Import Config FileS" category="ORMAP Map Production" class="ImportConfigFiles" id="ORMAP_MapProduction.ImportConfigFiles" image="Images\ImportConfigFiles.png" message="Import ORMAP Map Production Configuration Files.  You many need to ask your administrator where these files are located." tip="Import Configuration Files">
+    <Button caption="Import Config Files" category="ORMAP Map Production" class="ImportConfigFiles" id="ORMAP_MapProduction.ImportConfigFiles" image="Images\ImportConfigFiles.png" message="Import ORMAP Map Production Configuration Files.  You many need to ask your administrator where these files are located." tip="Import Configuration Files">
       <Help heading="" />
     </Button>    
   </Commands>
@@ -43,7 +43,7 @@
         <Button refID="ORMAP_MapProduction.SaveDefinitionQueries" />
         <Button refID="ORMAP_MapProduction.PrintMaps" />
         <Button refID="ORMAP_MapProduction.PageLayoutElementReport" />
-        <Button refID="ORMAP_MapProduction.ImportConfigFiles" />
+        <Button refID="ORMAP_MapProduction.ls -lImportConfigFiles" />
       </Items>
     </Toolbar>
   </Toolbars>

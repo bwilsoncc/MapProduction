@@ -2,7 +2,7 @@ import arcpy
 import pythonaddins
 import os
 
-tbxfile = os.path.join(os.path.dirname(__file__), r'Scripts\ORMAP Map Production.tbx')
+tbxfile = os.path.join(os.path.dirname(__file__), r'Scripts\ORMap Map Production.tbx')
 layerConfigFile = os.path.join(os.path.dirname(__file__), r'Config\ORMAP_LayersConfig.py')
 mapConfigFile = os.path.join(os.path.dirname(__file__), r'Config\ORMAP_MapConfig.py')
 

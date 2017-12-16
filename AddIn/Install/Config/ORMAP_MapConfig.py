@@ -1,15 +1,12 @@
 # ---------------------------------------------------------------------------
-# Ormap18x24MapConfig.py
+# ORMAP_18x24MapConfig.py
 # Created by: Shad Campbell
 # Date: 3/11/2011
-# Updated by: 
+# Updated by: Brian Wilson for Clatsop County on 12/12/2017 
 # Description: This is a configuration file specifically for 18 x 24 inch maps
 # to be customized by each county Do not delete any of the items in this file.
 # If they are not in use then specify thier value to 0.  
 # ---------------------------------------------------------------------------
-
-# Clatsop County
-# 2017-12-11 -- Brian converted this file from GeoModel/Clatsop/MapProduction18x24.ini
 
 DataFrameMinX= 0.4
 DataFrameMinY= 0.5
@@ -38,8 +35,16 @@ MaxCancelledRows = 100
 CancelledSortField='OBJECTID'
 CancelledNumberPrefix='Cancelled Nos.'
 
-;CONTROL DISTANCE BETWEEN MAPTITLE AND COUNTY NAME
-CountyNameDist=-0.25
+# Added these to get the script to RUN
+CountyNameDist = 0
 
-;CONTROL DISTANCE BETWEEN MAPTITLE AND MAPSCALE VALUE
+
+
+
+
+
+
+#CountyNameDist=-0.25
+
+# CONTROL DISTANCE BETWEEN MAPTITLE AND MAPSCALE VALUE
 MapScaleDist=0.15
