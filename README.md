@@ -6,11 +6,15 @@ to use this toolbar.
 
 ![alt text](https://raw.githubusercontent.com/ORMAPtools/MapProduction/master/Suppemental/Toolbar.PNG "Image of the toolbar")
 
+This fork was done to facilitate work in Clatsop county. As such if you can use it for anything, fine.
+Since the original repo seems unmaintained I have not tried to do any pull requests; at this point this code
+would only break that repo. 
 
-### Download
-The download contains everything you need including the Add-In, documentation, and configuration files.
-> [DOWNLOAD NOW](https://github.com/ORMAPtools/MapProduction/raw/master/Ormap%20Map%20Production%20AddIn.zip).
+I am currently eliminating redundant repetitious code and making configuration more robust and flexible.
 
+I have been testing the zoom tool from the toolbox found in the Scripts folder, this is much easier than using the addin.
+
+I have not updated the following documentation yet.
 
 ### Documentation/Configuration
 
