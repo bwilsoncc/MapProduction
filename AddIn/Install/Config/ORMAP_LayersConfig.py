@@ -11,7 +11,6 @@
 # Clatsop County
 # 2017-12-11 -- Brian converted this file from GeoModel/Clatsop/MapProduction18x24.ini
 
-
 # *MapNumber* will be replaced with the value of MapNumber from the associated feature class
 # *MapScale* will be replaced with the value of MapScale from the feature class
 
@@ -96,10 +95,10 @@ MAPINDEXSEEMAP_LAYER="MapIndex - SeeMaps"
 MAPINDEXSEEMAP_QD=""
 
 MAPINDEX_LAYER="MapIndex - SeeMaps"
-MAPINDEX_QD="[MapNumber] = '*MapNumber*'"
+MAPINDEX_QD="[MapNumber] LIKE '%s'"
 
 MAPINDEXMASK_LAYER="MapIndex - Mask"
-MAPINDEXMASK_QD="[MapNumber] <> '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
+MAPINDEXMASK_QD="NOT [MapNumber] LIKE '%s'"
 
 CORNER_BELOW_LAYER="Corner - Below"
 CORNER_BELOW_QD=""
@@ -123,7 +122,7 @@ WATER_BELOW_LAYER="Water - Below"
 WATER_BELOW_QD=""
 
 PAGELAYOUT_TABLE="PageLayoutElements"
-CANCELLEDNUMBERS_TABLE="CancelledNumbers"
+CANCELLEDNUMBERS_TABLE="K:/taxmaped/Clatsop/towned/cancelled.xlsx"
 CUSTOMDEFINITIONQUERIES_TABLE="CustomDefinitionQueries"
 
 # You can define up to 20 "extra" layers. Just number them like this.
@@ -133,7 +132,7 @@ EXTRA1_QD=""
 ##### locator map data frame #####
 LocatorDF = "LocatorDF"
 LOCATOR_LAYER="Highlight - MapIndex"
-LOCATOR_QD="[TR] = '%02d%02d%s'"
+LOCATOR_QD="[TR] = '%02d%02d%s'"  # This expects township, range, and range direction.
 
 ##### Sections map data frame #####
 SectionsDF = "SectionsDF"
@@ -144,3 +143,4 @@ SECTIONS_QD="[SectionNum] = %s" # This is an integer so don't wrap in quotes.
 QSectionsDF = "QSectionsDF"
 QTRSECTIONS_LAYER="Highlight - QtrSections"
 QSECTIONS_QD="[QSectName] = '%s'"
+

@@ -14,6 +14,7 @@ import pythonaddins
 import os, sys
 import datetime
 from ormapnum import ormapnum
+from cancellations import read_cancelled, make_table
 
 featureclassfields = [ "MapScale", "MapNumber", "CityName", "OrMapNum", "SHAPE@", ]
 MAPSCALE  = 0
@@ -29,7 +30,19 @@ pagelayoutfields = [ "MapAngle", ]
 ANGLE = 0
 
 # NB, force string into lower case to make sure it works in Windows
-sys.path.append(os.path.dirname(__file__).lower().replace('scripts', 'config')) #path to config files
+configpath = os.path.dirname(__file__).lower().replace('scripts', 'config')
+sys.path.append(configpath)
+
+def aprint(msg):
+    """ Print a message. Execution does not stop. """
+    print(msg)
+    sys.stdout.flush()
+    arcpy.AddMessage(msg)
+
+def eprint(msg):
+    """ Print a message. Execution will stop when you use this one. """
+    print("ERROR:",msg)
+    arcpy.AddError(msg)
 
 # Load the "configuration files"
 import ORMAP_LayersConfig as OrmapLayers
@@ -91,7 +104,7 @@ def readtable(mxd, df, tablename, fields, whereclause):
     try:
         tableview = MAP.ListTableViews(mxd, tablename, df)[0]
     except IndexError:
-        aprint("table=\"%s\" query=\"%s\"" % (tablename, whereclause))
+        #aprint("table=\"%s\" query=\"%s\"" % (tablename, whereclause))
         return table
 
     with arcpy.da.SearchCursor(tableview, fields, whereclause) as cursor:
@@ -99,7 +112,7 @@ def readtable(mxd, df, tablename, fields, whereclause):
             for row in cursor:
                 table.append(row)
         except Exception as e:
-            eprint("Cant read, %s" % e)
+            #eprint("Cant read, %s" % e)
             pass
     return table
 
@@ -127,23 +140,14 @@ def qqwhere(q, qq):
             rval = q + qq
     return rval
 
-def aprint(msg):
-    """ Print a message. Execution does not stop. """
-    print(msg)
-    sys.stdout.flush()
-    arcpy.AddMessage(msg)
-
-def eprint(msg):
-    """ Print a message. Execution will stop when you use this one. """
-    print("ERROR:",msg)
-    arcpy.AddError(msg)
-
 # ==============================================================================
 
-mapnumber = arcpy.GetParameterAsText(0)
-if not mapnumber: mapnumber = "8.10.25%" # debugging...
-##PageSize = arcpy.GetParameterAsText(1)
+# This is the mapnumber you typed in the ArcGIS dialog, so it can contain
+# wildcard charaacters. If it fails to match anything that is your problem. :-)
+mapnumber_arg = arcpy.GetParameterAsText(0)
+if not mapnumber_arg: mapnumber_arg = "8.10.25%" # debugging...
 
+##PageSize = arcpy.GetParameterAsText(1)
 
 load_config()
 
@@ -168,23 +172,26 @@ delimiter_r = ']'
 wildcard    = '*'
 # Just how stupid is it when I have to use different delimiters
 # for different databases. Sigh.
-query = "%sMapNumber%s LIKE '%s'" % (delimiter_l, delimiter_r, mapnumber)
+mapnumber_query = "%sMapNumber%s LIKE '%s'" % (delimiter_l, delimiter_r, mapnumber_arg)
 #query = "[MapNumber] LIKE '8.10.25*'" # uncomment only for DEBUGGING
-aprint(query)
+aprint(mapnumber_query)
 
-mapindexrow = readfeaturelayer(mxd, maindf, OrmapLayers.MAPINDEX_LAYER, query)
-if not mapindexrow: eprint("Unable to read MapNumber \"%s\" in feature class \"%s\"." % (mapnumber, OrmapLayers.MAPINDEX_LAYER))
+mapindexrow = readfeaturelayer(mxd, maindf, OrmapLayers.MAPINDEX_LAYER, mapnumber_query)
+if not mapindexrow: eprint("Unable to read MapNumber in feature class \"%s\". Query: %s" % (OrmapLayers.MAPINDEX_LAYER, mapnumber_query))
 
-table_pagelayout = readtable(mxd, maindf, OrmapLayers.PAGELAYOUT_TABLE, pagelayoutfields, query)
-if not len(table_pagelayout): aprint("Unable to load PageLayoutTable \"%s\"." % OrmapLayers.PAGELAYOUT_TABLE)
+table_pagelayout = readtable(mxd, maindf, OrmapLayers.PAGELAYOUT_TABLE, pagelayoutfields, mapnumber_query)
+if not len(table_pagelayout): aprint("Unable to load PageLayoutTable \"%s\". Query: %s" % (OrmapLayers.PAGELAYOUT_TABLE, mapnumber_query))
 
-table_cancelled = readtable(mxd, maindf, OrmapLayers.CANCELLEDNUMBERS_TABLE, cancelledfields, query)
-if not len(table_cancelled): aprint("Unable to load CancelledNumbersTable \"%s\"." % OrmapLayers.CANCELLEDNUMBERS_TABLE)
+table_cancelled = read_cancelled(OrmapLayers.CANCELLEDNUMBERS_TABLE, mapnumber_arg)
+if len(table_cancelled): 
+    aprint("Loaded %d cancelled taxlots." % len(table_cancelled))
+else:
+    aprint("Unable to load cancelled numbers from \"%s\" for %s." % (OrmapLayers.CANCELLEDNUMBERS_TABLE, mapnumber_arg))
 
-table_defquery = readtable(mxd, maindf, OrmapLayers.CUSTOMDEFINITIONQUERIES_TABLE, "*", query)
-if not len(table_defquery): aprint("Unable to load optional DefCustomTable \"%s\"." % OrmapLayers.CUSTOMDEFINITIONQUERIES_TABLE)
+table_defquery = readtable(mxd, maindf, OrmapLayers.CUSTOMDEFINITIONQUERIES_TABLE, "*", mapnumber_query)
+if not len(table_defquery): aprint("Unable to load optional DefCustomTable \"%s\". Query: %s" % (OrmapLayers.CUSTOMDEFINITIONQUERIES_TABLE, mapnumber_query))
 
-aprint("Processing MapNumber '%s'." % mapnumber)
+aprint("Processing MapNumber '%s'." % mapnumber_arg)
 
 geom = mapindexrow[SHAPE]
 extent = geom.extent
@@ -270,7 +277,6 @@ if len(table_defquery):
     #-- Items stored in long string input defQueryString field.  Pull them out and into their own array.
     defQueryList = table_defquery.defQueryString.split(";")
     defQueryLayers = []
-    defQueryValues = []
 
     for defQueryItem in defQueryList:
         lyr,qry = defQueryItem.split(":")
@@ -471,78 +477,53 @@ for elm in MAP.ListLayoutElements(mxd):
         elm.elementPositionX = ScaleBarX
         elm.elementPositionY = ScaleBarY
 
-    if elm.name == "CanMapNumber":
-        elm.text = " " #-- Important that this element has text in it (even just a single space) so ArcMap does not "lose" it.
-        cancelledElm2 = None
-        try:
-            cancelledElm2 = MAP.ListLayoutElements(mxd, "TEXT_ELEMENT", "CanMapNumber2")[0]
-            cancelledElm2.text = " " #-- Important that this element has some text in it (event just a single space) so ArcMap does not "lose" it.
-        except Exception as e:
-            pass
-        cancelledElm3 = None
-        try:
-            cancelledElm3 = MAP.ListLayoutElements(mxd, "TEXT_ELEMENT", "CanMapNumber3")[0]
-            cancelledElm3.text = " " #-- Important that this element has some text in it (event just a single space) so ArcMap does not "lose" it.
-        except Exception as e:
-            pass
-        n = 0
-        maxRows = PageConfig.MaxCancelledRows
+    if table_cancelled:
+        cancelled_elem = [None, None, None, None]
+        ncols = 4 # "can1...can4"
+        for x in xrange(0, ncols):
+            try:
+                cancelled_elem[x] = MAP.ListLayoutElements(mxd, "TEXT_ELEMENT", "can%d" % (x+1))[0]
+                cancelled_elem[x].text = " " # Important that this element has some text in it (event just a single space) so ArcMap does not "lose" it.
+            except Exception as e:
+                aprint("Exception \"e\" when initializing cancelled column %d" % (e,x))
+                pass
 
-        if not len(table_cancelled):
-            aprint(" ")
-            aprint("------- WARNING -------")
-            aprint("NO CANCELLED NUMBERS FOR THIS MAPNUMBER. IF THERE ARE SUPPOSED TO BE THEN MAKE SURE YOU DO NOT HAVE ANY RECORDS CURRENTLY SELECTED OR HAVE A DEFINITION QUERY SET ON YOUR CANCELLED NUMBERS TABLE.")
-            aprint(" ")
+#        maxRows = PageConfig.MaxCancelledRows
+        x = 0
+        max_y, columns = make_table(table_cancelled, ncols)
+        fontsize = 10
+        if max_y>10: fontsize = 8
 
-        n = 0
-        for row in table_cancelled:
-            #-- If there is not a second text box for Cancelled Numbers force into the first text box.
-            if n >= maxRows and cancelledElm2 == None:
-                n = 0
-            #-- If there is not a third text box for Cancelled Numbers force into the second text box.
-            if n >= (maxRows*2) and cancelledElm2 != None and cancelledElm3 == None:
-                n = maxRows
-
-            if n < maxRows:
-                elm.text += row[TAXLOT] + "\n"
-            elif n >= maxRows and n < (maxRows*2):
-                cancelledElm2.text += row[TAXLOT] + "\n"
-            else:
-                cancelledElm3.text += row[TAXLOT] + "\n"
-
-            n += 1
-
-        elm.text = PageConfig.CancelledNumberPrefix + "\n" + elm.text.strip() if elm.text != " " else " " #-- Important that this element has some text in it (event just a single space) so ArcMap does not "lose" it.
-        elm.elementPositionX = CancelNumX
-        elm.elementPositionY = CancelNumY
-        if cancelledElm2 != None:
-            cancelledElm2.text = cancelledElm2.text.strip() if cancelledElm2.text != " " else " " #-- Important that this element has some text in it (event just a single space) so ArcMap does not "lose" it.
-            cancelledElm2.elementPositionX = elm.elementPositionX + cancelledElm2.elementWidth + .05
-            cancelledElm2.elementPositionY = elm.elementPositionY
-            if cancelledElm3 != None:
-                cancelledElm3.text = cancelledElm3.text.strip() if cancelledElm3.text != " " else " " #-- Important that this element has some text in it (event just a single space) so ArcMap does not "lose" it.
-                cancelledElm3.elementPositionX = cancelledElm2.elementPositionX + cancelledElm3.elementWidth + .05
-                cancelledElm3.elementPositionY = elm.elementPositionY
-
+        for column in columns:
+            cancelled_elem[x].text = column
+            cancelled_elem[x].fontSize = fontsize
+            x += 1
 
 #MODIFY MAIN DATAFRAME PROPERTIES
 maindf.extent   = mapExtent
 maindf.scale    = s_mapscale
 maindf.rotation = map_angle
 
-# Set up the definition query on the mapindex layer to highlight polygons.
+#--- Set up the definition query on each data framelayer to highlight polygons.
+
 query = ""
-if s_mapnum: query = OrmapLayers.LOCATOR_QD % (int(orm.township), int(orm.range), orm.range_dir) # No township dir in datatable, I know not why.
+try:
+    if s_mapnum: query = OrmapLayers.MAPINDEXMASK_QD % mapnumber_arg 
+except Exception as e:
+    aprint("Query setup failed: '%s' '%s' %s" % (OrmapLayers.MAPINDEXMASK_QD, mapnumber_arg, e))
+set_definition(mxd, maindf, OrmapLayers.MAPINDEXMASK_LAYER, query)
+
+query = ""
+if s_mapnum: query = OrmapLayers.LOCATOR_QD % (int(orm.township), int(orm.range), orm.range_dir) 
 set_definition(mxd, locatordf, OrmapLayers.LOCATOR_LAYER, query)
 
-# Set up the definition query on the sections layer to highlight polygons.
 query = ""
 if orm.section: query = OrmapLayers.SECTIONS_QD % orm.section
 set_definition(mxd, sectionsdf, OrmapLayers.SECTIONS_LAYER, query)
         
-# Set up the definition query on the quarter sections layer to highlight polygons.
 query = OrmapLayers.QSECTIONS_QD % qqwhere(orm.quarter, orm.quarterquarter)
 set_definition(mxd, qsectionsdf, OrmapLayers.QTRSECTIONS_LAYER, query)
+
 
 arcpy.RefreshActiveView()
 
