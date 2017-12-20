@@ -21,6 +21,7 @@
 ##### MAIN DATA FRAME #####
 
 MainDF = "MapView"
+MapNumberField = "MapNumber"
 
 LOTSANNO_LAYER="LotsAnno"
 LOTSANNO_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
