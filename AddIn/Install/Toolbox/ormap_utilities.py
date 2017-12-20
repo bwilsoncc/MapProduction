@@ -14,7 +14,7 @@ from arcpy import mapping as MAP
 # =============================================================================
 # Load the "configuration files"
 # NB, force string into lower case to make sure it works in Windows
-configpath = os.path.dirname(__file__).replace("Toolbox","Addins/Install/Config")
+configpath = os.path.dirname(__file__).replace("Toolbox","Config")
 print(configpath)
 sys.path.append(configpath)
 import ORMAP_LayersConfig as ORMapLayers
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     # unit tests
     
     # In real life this will normally be "CURRENT".
-    mxdname = r"C:\GeoModel\MapProduction\Toolbox\TestMap.mxd"
+    mxdname = "TestMap.mxd"
     
     dfname = ORMapLayers.MainDF
     layername = ORMapLayers.MAPINDEX_LAYER
@@ -72,6 +72,7 @@ if __name__ == "__main__":
     print(layer.dataSource)
     l = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
     print(l)
+    del mxd
     
 # That's all!
 

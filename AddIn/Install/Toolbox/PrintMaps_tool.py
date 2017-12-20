@@ -80,6 +80,8 @@ class PrintMaps(object):
         #output_file.value = path
         #output_file.filter.list = ["pdf","jpg"]
         params.append(output_file)
+        
+        del mxd
 
         return params
 
@@ -142,5 +144,7 @@ if __name__ == "__main__":
     # problems with a definition query.
     l = list_mapnumbers(layer.dataSource, "MapNumber")
     print(l)
+    
+    del mxd
     
 # That's all!
