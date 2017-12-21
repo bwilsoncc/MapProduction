@@ -14,12 +14,26 @@ from arcpy import mapping as MAP
 # =============================================================================
 # Load the "configuration files"
 # NB, force string into lower case to make sure it works in Windows
-configpath = os.path.dirname(__file__).replace("Toolbox","Config")
-print(configpath)
+configpath = os.path.dirname(__file__)
+if not configpath: configpath = os.getcwd()
+configpath=configpath.replace("Toolbox","Config")
+print("__file__", __file__, "configpath", configpath)
 sys.path.append(configpath)
+
 import ORMAP_LayersConfig as ORMapLayers
 import ORMAP_MapConfig as ORMapPageLayout
 print(ORMapLayers.__file__, ORMapPageLayout.__file__)
+
+def aprint(msg):
+    """ Print a message. Execution does not stop. """
+    print(msg)
+    sys.stdout.flush()
+    arcpy.AddMessage(msg)
+
+def eprint(msg):
+    """ Print a message. Execution will stop when you use this one. """
+    print("ERROR:",msg)
+    arcpy.AddError(msg)
 
 def get_dataframe(mxd, dfname):
     """ Return the named dataframe object. """
@@ -27,7 +41,7 @@ def get_dataframe(mxd, dfname):
     try:
         df = MAP.ListDataFrames(mxd, dfname)[0]
     except Exception as e:
-        print("Dataframe not found. Make sure it is named '%s'. \"%s\"" % (dfname,e))
+        aprint("Dataframe not found. Make sure it is named '%s'. \"%s\"" % (dfname,e))
     return df
 
 def get_layer(mxd, df, layername):
