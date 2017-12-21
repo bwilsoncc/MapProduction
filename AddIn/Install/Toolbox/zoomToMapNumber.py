@@ -503,7 +503,6 @@ def update_page_layout(mxdname, mapnumber):
 # ======================================================================
 
 if __name__ == '__main__':
-    
     try:
         # Try to run as a python script (from a toolbox in arcmap)
         mxdname="CURRENT"
