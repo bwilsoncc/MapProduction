@@ -24,52 +24,24 @@ MainDF = "MapView"
 MapNumberField = "MapNumber"
 
 LOTSANNO_LAYER="LotsAnno"
-LOTSANNO_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 PLATSANNO_LAYER="PlatsAnno"
-PLATSANNO_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 TAXCODEANNO_LAYER="TaxCodeAnno"
-TAXCODEANNO_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 TAXNUMANNO_LAYER="TaxlotNumberAnno"
-TAXNUMANNO_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ACRESANNO_LAYER="TaxlotAcresAnno"
-ACRESANNO_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
 
 ANNO10_LAYER="Anno0010scale"
-ANNO10_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ANNO20_LAYER="Anno0020scale"
-ANNO20_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ANNO30_LAYER="Anno0030scale"
-ANNO30_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ANNO40_LAYER="Anno0040scale"
-ANNO40_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ANNO50_LAYER="Anno0050scale"
-ANNO50_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ANNO60_LAYER="Anno0060scale"
-ANNO60_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ANNO100_LAYER="Anno0100scale"
-ANNO100_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ANNO200_LAYER="Anno0200scale"
-ANNO200_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ANNO400_LAYER="Anno0400scale"
-ANNO400_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ANNO800_LAYER="Anno0800scale"
-ANNO800_QD="[MapNumber] = '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
 ANNO2000_LAYER="Anno2000scale"
-ANNO2000_QD="[MapNumber]='*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
+
+DEFAULT_QD="[MapNumber] LIKE '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
 
 CORNER_ABOVE_LAYER="Corner - Above"
 CORNER_ABOVE_QD=""
@@ -96,7 +68,7 @@ MAPINDEXSEEMAP_LAYER="MapIndex - SeeMaps"
 MAPINDEXSEEMAP_QD=""
 
 MAPINDEX_LAYER="MapIndex - SeeMaps"
-MAPINDEX_QD="[MapNumber] LIKE '%s'"
+#MAPINDEX_QD="[MapNumber] LIKE '%s'" use default
 
 MAPINDEXMASK_LAYER="MapIndex - Mask"
 MAPINDEXMASK_QD="NOT [MapNumber] LIKE '%s'"
