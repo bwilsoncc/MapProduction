@@ -17,13 +17,42 @@ class PrintMaps(object):
         
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
-        self.label = "PrintMaps"
+        self.label = self.__class__.__name__
         self.description = """Print one or more maps, as determined by a list of map numbers."""
         self.canRunInBackground = False
-        self.category = "ORMap" # Use your own category here, or an existing one.
+        #self.category = "Map production" # Use your own category here, or an existing one.
         #self.stylesheet = "" # I don't know how to use this yet.
+        self.mxdname = "CURRENT"
         self.extensions = ["pdf","jpg"]
         return
+
+    def __set_output_filter(self, format):
+        if format == "PDF":
+            filter = [ "pdf" ]
+        elif format == "JPEG":
+            filter = [ "jpg" ]
+        else:
+            filter = [ "*" ]
+        return filter
+        
+    def __set_output_file(self, currentpathname, format):
+        """Build a new output file name based on current parameter settings,
+        and set it in the "parameters" list. """ 
+
+        path = fileext = newfilename = ""
+        if currentpathname: path,fileext = os.path.split(currentpathname)
+
+        file = ext = ""
+        if fileext:
+            file,ext = os.path.splitext(fileext)
+            if format == "PDF":
+                fileext = file + ".pdf"
+            elif format == "JPEG":
+                fileext = file + ".jpg"
+            else:
+                fileext = file
+            newfilename = os.path.join(path, fileext)
+        return newfilename
     
     def getParameterInfo(self):
         """Define parameter definitions
@@ -33,10 +62,8 @@ class PrintMaps(object):
         
         # You can define a tool to have no parameters
         params = []
-
-        mxd = MAP.MapDocument("CURRENT")
-    
-        # ..or you can define a parameter
+        
+        # params[0] is map number list (delimited by ";")
         map_number = arcpy.Parameter(name="map_number",
                                      displayName="Map Number",
                                      datatype="GPString",
@@ -44,18 +71,34 @@ class PrintMaps(object):
                                      direction="Input", # Input|Output
                                      multiValue = True,
                                      )
-        # You can set filters here for example
         map_number.filter.type = "ValueList"
+        map_number.filter.list = []
         
-        df = get_dataframe(mxd, ORMapLayers.MainDF)
-        layer = get_layer(mxd, df, ORMapLayers.MAPINDEX_LAYER)
-        # Using the datasource instead of the layer avoids problems if there is a definition query.
-        map_number.filter.list = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
-        # You can set a default if you want -- this makes debugging a little easier.
-        #map_number.value = map_number.filter.list[0]
+        mxd = None
+        mxd_filepath = ""
+        try:
+            mxd = MAP.MapDocument(self.mxdname)
+            mxd_filepath = os.path.split(mxd.filePath)[0]
+        except Exception as e:
+            print("%s. \"%s\"" % (e,self.mxdname))
+        try:
+            dfname = ORMapLayers.MainDF
+        except NameError:
+            dfname = "*" # default to first dataframe in MXD
+        if mxd:         
+            df = get_dataframe(mxd, dfname)
+            layer = get_layer(mxd, df, ORMapLayers.MAPINDEX_LAYER)
+            # Using the datasource instead of the layer avoids problems if there is a definition query.
+            map_number.filter.list = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
+        
+        try:
+            del mxd
+        except NameError:
+            pass
         
         params.append(map_number)
-
+        
+        # params[1] is output format
         output_format = arcpy.Parameter(name="output_format",
                                         displayName="Output format",
                                         datatype="GPString",
@@ -69,21 +112,19 @@ class PrintMaps(object):
         output_format.value = "PDF"
         params.append(output_format)
         
+        # params[2] is output file
         output_file = arcpy.Parameter(name="output_file",
                                       displayName="Output file",
                                       datatype="DEFile",
                                       parameterType="Required", # Required|Optional|Derived
                                       direction="Output", # Input|Output
                                       )
-      
-        # Try to set up something more useful as a path than the default
-        path,fileext = os.path.split(mxd.filePath)
-        file,ext = os.path.splitext(fileext)
-        output_file.value = path
-        output_file.filter.list = self.extensions
+        output_file.filter.list = self.__set_output_filter(str(output_format.value))
         params.append(output_file)
+
+        # Try to set up something more useful as a path than the default
+        output_file.value = self.__set_output_file(mxd_filepath, output_format.value)
         
-        del mxd
         return params
 
     def isLicensed(self):
@@ -94,6 +135,11 @@ class PrintMaps(object):
         """Modify the values and properties of parameters before internal
         validation is performed.  This method is called whenever a parameter
         has been changed."""
+        # Call this in case the output type changed
+        #self.__reset_output_file(parameters)
+
+        parameters[2].filter.list = self.__set_output_filter(str(parameters[1].value))
+        parameters[2].value = self.__set_output_file(str(parameters[2].value), parameters[1].value)
 
         return
 
@@ -115,43 +161,47 @@ class PrintMaps(object):
         #
         # This separates the code doing the work from all
         # the crazy code required to talk to ArcGIS.
-        
-        mxdname = "CURRENT"
-        
+                
         # See http://resources.arcgis.com/en/help/main/10.2/index.html#//018z00000063000000
         map_numbers = parameters[0].valueAsText
         output_type = parameters[1].valueAsText
         output_file = parameters[2].value
         
         # Okay finally go ahead and do the work.
-        printMaps.print_maps(mxdname, map_numbers, output_type, output_file)
+        mxd = MAP.MapDocument(self.mxdname)
+        printMaps.print_maps(mxd, map_numbers, output_type, str(output_file))
         return
 
 # =============================================================================
-        
 if __name__ == "__main__":
     # Unit tests, a few anyway.
     
-    # Normally this is set to CURRENT        
-    mxdname   = "TestMap.mxd"
-    mxd = MAP.MapDocument(mxdname)
-    
-    df = get_dataframe(mxd, ORMapLayers.MainDF)
-    print(df.name)
-    
-    layer = get_layer(mxd, df, ORMapLayers.MAPINDEX_LAYER)
-    print(layer.dataSource)
-    
-    # Using the datasource instead of the layer itself avoids 
-    # problems with a definition query.
-    l = list_mapnumbers(layer.dataSource, "MapNumber")
-    print(l)
-    
-    del mxd
+    class Messenger(object):
+        def addMessage(self, message):
+            print(message)
 
-    pmo = PrintMaps()
+    mxdname   = "TestMap.mxd"
     
-    # We don't really print anything here, sorry.
+    #mxd = MAP.MapDocument(mxdname)
+    #df = get_dataframe(mxd, ORMapLayers.MainDF)
+    #print(df.name)
+    #layer = get_layer(mxd, df, ORMapLayers.MAPINDEX_LAYER)
+    #print(layer.dataSource)
+    ## Using the datasource instead of the layer itself avoids 
+    ## problems with a definition query.
+    #l = list_mapnumbers(layer.dataSource, "MapNumber")
+    #print(l)
+    #del mxd
+
     # This is only a test.
+    pmo = PrintMaps()
+    pmo.mxdname = mxdname # Override "CURRENT" for standalone test
+    params = pmo.getParameterInfo()
+    params[0].value = "8.10.25;8.10.7"
+    params[1].value = "JPEG"
+    params[2].value = r"C:\TempPath\test.jpg"
+#    for p in params:
+#        print(p.name, p.value, p.filter.list)
+    pmo.execute(params, Messenger())
 
 # That's all!
