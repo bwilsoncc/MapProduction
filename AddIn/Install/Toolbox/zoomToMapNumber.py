@@ -152,12 +152,12 @@ def set_main_definition_queries(mxd, df, mapnumber, mapscale, query):
             try:
                 layername = eval("ORMapLayers."+v_lyrname)
             except AttributeError:
-                aprint("Layer not found \"%s\"; ignoring it." % v_lyrname)
+                print("Layer not found \"%s\"; ignoring it." % v_lyrname)
                 continue
             try:
                 dq = eval("ORMapLayers."+v_dq)
             except AttributeError:
-                aprint("Query not found \"%s\"; using default." % v_dq)
+                print("Query not found \"%s\"; using default." % v_dq)
                 dq = default_q
             #print(layername, dq)
             d_layer[layername] = dq.replace("*MapNumber*", mapnumber).replace("*MapScale*", str(mapscale))                    
@@ -410,7 +410,7 @@ def update_cancelled_taxlot_table(mxd, mapnumber_arg):
     # Note that this function is not affected by any query definition.
     table = read_cancelled(ORMapLayers.CANCELLEDNUMBERS_TABLE, mapnumber_arg)
     if not len(table): 
-        aprint("Unable to load cancelled numbers from \"%s\" for %s." % (ORMapLayers.CANCELLEDNUMBERS_TABLE, mapnumber_arg))
+        aprint("No cancelled taxlot numbers found for \"%s\"." % mapnumber_arg)
         return
     aprint("Loaded %d cancelled taxlots." % len(table))
 
@@ -440,22 +440,14 @@ def update_cancelled_taxlot_table(mxd, mapnumber_arg):
     return
 
 # ==============================================================================
-#
-# This is the main entry point from the Python Toolbox
-#
-   
-def update_page_layout(mxdname, mapnumber):
-    """Update the current map document (CURRENT) page layout using the given map_number."""
-    
-    mxd = MAP.MapDocument(mxdname)
-    print("MXD file = ", mxd.filePath)
 
+def update_page_layout(mxd, mapnumber):
+    """Update the map document page layout using the given map_number."""
+    
     try:
         maindf_name = ORMapLayers.MainDF
     except AttributeError:
         maindf_name = "MainDF"
-
-    mxd = MAP.MapDocument(mxdname)
 
     maindf = get_dataframe(mxd, maindf_name) 
     mapnumber_query = get_mapnumber_query(mapnumber)
@@ -495,7 +487,6 @@ def update_page_layout(mxdname, mapnumber):
 
     arcpy.RefreshActiveView()
 
-    aprint("That's all.")
     return
 
 # ======================================================================
@@ -510,7 +501,8 @@ if __name__ == '__main__':
         mxdname = "TestMap.mxd"
         mapnumber = "8.10.25*"
 
-    aprint("mxdname: %s mapnumber: %s" % (mxdname, mapnumber))
-    update_page_layout(mxdname, mapnumber)
-    
+    print("mxdname: %s mapnumber: %s" % (mxdname, mapnumber))
+    mxd = MAP.MapDocument(mxdname)
+    update_page_layout(mxd, mapnumber)
+    del mxd    
 # That's all

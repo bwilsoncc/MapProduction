@@ -10,6 +10,7 @@ from __future__ import print_function
 import os, sys
 import arcpy
 from arcpy import mapping as MAP
+import mapnum
 
 # =============================================================================
 # Load the "configuration files"
@@ -65,12 +66,16 @@ def set_definition_query(mxd, df, layername, query):
     return True
 
 def list_mapnumbers(fc, mapnum_fieldname):
-    d_val = {}
+    """Return a sorted list of the contents of the mapnumber field in a featureclass. """
+    d_val = {} # use a dict to get rid of duplicates
     with arcpy.da.SearchCursor(fc, [mapnum_fieldname]) as cursor:
         for row in cursor:
-            if row[0]: d_val[row[0]] = True
-    return [mapnum for mapnum in d_val]
-        
+            if row[0]:
+                mn = mapnum.mapnum(row[0])
+                d_val[mn.number] = row[0]
+    return [d_val[k] for k in sorted(d_val)]
+ 
+    
 # =============================================================================
 if __name__ == "__main__":
     # unit tests
@@ -83,10 +88,13 @@ if __name__ == "__main__":
     mxd = MAP.MapDocument(mxdname)
     df = get_dataframe(mxd, dfname)
     layer = get_layer(mxd, df, layername)
-    print(layer.dataSource)
+    print("layer.dataSource=",layer.dataSource)
+    
     l = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
-    print(l)
+    for m in l:
+        print(m)
     del mxd
     
+
 # That's all!
 
