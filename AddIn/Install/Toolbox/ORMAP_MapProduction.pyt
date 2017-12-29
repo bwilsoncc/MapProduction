@@ -13,6 +13,7 @@ __version__ = "2"
 # Import all the tool classes that will be included in this toolbox.
 from ZoomToMapNumber_tool import ZoomToMapNumber
 from PrintMaps_tool import PrintMaps
+from MXDReport_tool import MXDReport
 
 class Toolbox(object):
     def __init__(self):
@@ -24,7 +25,8 @@ class Toolbox(object):
         # List of tool classes associated with this toolbox
         self.tools = [
                      ZoomToMapNumber,
-                     PrintMaps
+                     PrintMaps,
+                     MXDReport
                      ]
 
 if __name__ == "__main__":
