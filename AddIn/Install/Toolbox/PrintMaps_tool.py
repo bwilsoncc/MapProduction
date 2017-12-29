@@ -55,14 +55,8 @@ class PrintMaps(object):
         return newfilename
     
     def getParameterInfo(self):
-        """Define parameter definitions
-           Refer to http://resources.arcgis.com/en/help/main/10.2/index.html#/Defining_parameters_in_a_Python_toolbox/001500000028000000/
-           For datatype see https://desktop.arcgis.com/en/arcmap/latest/analyze/creating-tools/defining-parameter-data-types-in-a-python-toolbox.htm
+        """Define parameter definitions and return them as a list.
         """
-        
-        # You can define a tool to have no parameters
-        params = []
-        
         # params[0] is map number list (delimited by ";")
         map_number = arcpy.Parameter(name="map_number",
                                      displayName="Map Number",
@@ -73,31 +67,19 @@ class PrintMaps(object):
                                      )
         map_number.filter.type = "ValueList"
         map_number.filter.list = []
-        
-        mxd = None
+
         mxd_filepath = ""
         try:
             mxd = MAP.MapDocument(self.mxdname)
             mxd_filepath = os.path.split(mxd.filePath)[0]
-        except Exception as e:
-            print("%s. \"%s\"" % (e,self.mxdname))
-        try:
-            dfname = ORMapLayers.MainDF
-        except NameError:
-            dfname = "*" # default to first dataframe in MXD
-        if mxd:         
-            df = get_dataframe(mxd, dfname)
+            df = get_dataframe(mxd, ORMapLayers.MainDF)
             layer = get_layer(mxd, df, ORMapLayers.MAPINDEX_LAYER)
             # Using the datasource instead of the layer avoids problems if there is a definition query.
             map_number.filter.list = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
-        
-        try:
             del mxd
-        except NameError:
-            pass
-        
-        params.append(map_number)
-        
+        except Exception as e:
+            arcpy.AddMessage("%s. \"%s\"" % (e,self.mxdname))
+                
         # params[1] is output format
         output_format = arcpy.Parameter(name="output_format",
                                         displayName="Output format",
@@ -110,7 +92,6 @@ class PrintMaps(object):
         output_format.filter.list = ["Printer","PDF","JPEG"]
         # You can set a default value here.
         output_format.value = "PDF"
-        params.append(output_format)
         
         # params[2] is output file
         output_file = arcpy.Parameter(name="output_file",
@@ -120,13 +101,12 @@ class PrintMaps(object):
                                       direction="Output", # Input|Output
                                       )
         output_file.filter.list = self.__set_output_filter(str(output_format.value))
-        params.append(output_file)
 
         # Try to set up something more useful as a path than the default
         output_file.value = self.__set_output_file(mxd_filepath, output_format.value)
-        
-        return params
 
+        return [map_number, output_format, output_file]
+        
     def isLicensed(self):
         """Set whether tool is licensed to execute."""
         return True
@@ -135,8 +115,6 @@ class PrintMaps(object):
         """Modify the values and properties of parameters before internal
         validation is performed.  This method is called whenever a parameter
         has been changed."""
-        # Call this in case the output type changed
-        #self.__reset_output_file(parameters)
 
         parameters[2].filter.list = self.__set_output_filter(str(parameters[1].value))
         parameters[2].value = self.__set_output_file(str(parameters[2].value), parameters[1].value)

@@ -79,7 +79,7 @@ def set_main_definition_queries(mxd, df, mapnumber, mapscale, query):
 
 # So far, mapscale is not used in any queries... 
         
-    aprint("Setting up main layer definition queries.")
+    arcpy.SetProgressorLabel("Set Main DF definition queries.")
     table_defquery = readtable(mxd, df, ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE, "*", query)
     if len(table_defquery):
         
@@ -179,6 +179,8 @@ def adjust_masking(mxd, maindf, orm, mapnumber):
     and some are "highlighters" (show selected polygon(s)). 
     Set up query definitions in each dataframe to control this. """
 
+    arcpy.SetProgressorLabel("Adjust feature masks")
+
     # Try to read each dataframe name from config
     # and fall back to a default name.
     
@@ -263,6 +265,8 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
     # Allowing changes to the page elements based on settings here
     # would allow a custom set up for each map page, by loading settings
     # from a table.
+
+    arcpy.SetProgressorLabel("Set up page layout elements")
 
     # Using a table has the advantage of allowing a custom set up for each page.
     table = readtable(mxd, df, ORMapLayers.PAGELAYOUT_TABLE, pagelayoutfields, mapnumber_query)
@@ -403,10 +407,12 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
 #            elm.elementPositionY = ScaleBarY
     return
 
-def update_cancelled_taxlot_table(mxd, mapnumber_arg):
+def populate_cancelled_taxlot_table(mxd, mapnumber_arg):
 
     # Might want to move the "cancelled" table off the page if it's empty???
 
+    arcpy.SetProgressorLabel("Populate cancelled taxlot table")
+        
     # Note that this function is not affected by any query definition.
     table = read_cancelled(ORMapLayers.CANCELLEDNUMBERS_TABLE, mapnumber_arg)
     if not len(table): 
@@ -482,7 +488,7 @@ def update_page_layout(mxd, mapnumber):
     if not len(table_defquery): aprint("Unable to load optional DefCustomTable \"%s\". Query: %s" % (ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE, mapnumber_query))
 
     update_page_elements(mxd, maindf, orm, mapnumber_query, mapindex_mapnumber, mapindex_mapscale, mapindex_cityname)
-    update_cancelled_taxlot_table(mxd, mapnumber)
+    populate_cancelled_taxlot_table(mxd, mapnumber)
     adjust_masking(mxd, maindf, orm, mapnumber)
 
     arcpy.RefreshActiveView()

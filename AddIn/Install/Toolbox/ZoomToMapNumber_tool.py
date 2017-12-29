@@ -5,9 +5,11 @@ Created on Tue Dec 19 15:43:00 2017
 @author: bwilson
 """
 from __future__ import print_function
+import os
 import arcpy
 from arcpy import mapping as MAP
 import zoomToMapNumber
+from ormap_utilities import ORMapLayers, get_dataframe, get_layer, list_mapnumbers
 
 class ZoomToMapNumber(object):
     """This class has the methods you need to define
@@ -27,9 +29,6 @@ class ZoomToMapNumber(object):
            Refer to http://resources.arcgis.com/en/help/main/10.2/index.html#/Defining_parameters_in_a_Python_toolbox/001500000028000000/
            For datatype see https://desktop.arcgis.com/en/arcmap/latest/analyze/creating-tools/defining-parameter-data-types-in-a-python-toolbox.htm
         """
-
-        params = []
-
         map_number = arcpy.Parameter(name="mapnumber",
                                  displayName="Map Number",
                                  datatype="GPString",
@@ -37,11 +36,19 @@ class ZoomToMapNumber(object):
                                  direction="Input", # Input|Output
                                  multiValue=False, # We can accept many numbers.
                                 )
-        # You can set a default if you want -- this makes debugging a little easier.
-        map_number.value = "8.10.25"
+        map_number.value = ""
+        try:
+            mxd = MAP.MapDocument(self.mxdname)
+            df = get_dataframe(mxd, ORMapLayers.MainDF)
+            layer = get_layer(mxd, df, ORMapLayers.MAPINDEX_LAYER)
+            # Using the datasource instead of the layer avoids problems if there is a definition query.
+            map_number.filter.list = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
+            map_number.value = map_number.filter.list[0]
+            del mxd
+        except Exception as e:
+            arcpy.AddMessage("%s. \"%s\"" % (e,self.mxdname))
 
-        params.append(map_number)
-        return params
+        return [map_number]
 
     def isLicensed(self):
         """Set whether tool is licensed to execute."""
