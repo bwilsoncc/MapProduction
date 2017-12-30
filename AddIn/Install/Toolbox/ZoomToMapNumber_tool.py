@@ -58,11 +58,18 @@ class ZoomToMapNumber(object):
         """Modify the values and properties of parameters before internal
         validation is performed.  This method is called whenever a parameter
         has been changed."""
+        
+        mapnum = parameters[0].valueAsText           
+        if mapnum[-1] == "*":
+            if not mapnum in parameters[0].filter.list:
+                parameters[0].filter.list.append(mapnum)
+            parameters[0].clearMessage()        
         return
 
     def updateMessages(self, parameters):
         """Modify the messages created by internal validation for each tool
         parameter.  This method is called after internal validation."""
+
         return
 
     def execute(self, parameters, messages):

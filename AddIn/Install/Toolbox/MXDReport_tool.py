@@ -22,13 +22,20 @@ class MXDReport(object):
         self.canRunInBackground = False
         #self.category = "Map production" # Use your own category here, or an existing one.
         #self.stylesheet = "" # I don't know how to use this yet.
-        self.mxdname = "CURRENT"
         
     def getParameterInfo(self):
         """Define parameter definitions
            Refer to http://resources.arcgis.com/en/help/main/10.2/index.html#/Defining_parameters_in_a_Python_toolbox/001500000028000000/
            For datatype see https://desktop.arcgis.com/en/arcmap/latest/analyze/creating-tools/defining-parameter-data-types-in-a-python-toolbox.htm
         """
+
+        mxdname = arcpy.Parameter(name="map document",
+                                 displayName="Map document name",
+                                 datatype=["DEMapDocument","GPString"],
+                                 parameterType="Required", # Required|Optional|Derived
+                                 direction="Input", # Input|Output
+                                )
+        mxdname.value = "CURRENT"
 
         output = arcpy.Parameter(name="output_file",
                                  displayName="Output document name",
@@ -39,16 +46,36 @@ class MXDReport(object):
         output.filter.list = [ "txt" ]
         output.value = "C:\\TempPath\output.txt"
 
-        return [output]
+        return [mxdname,output]
 
     def isLicensed(self):
         """Set whether tool is licensed to execute."""
         return True
 
+    def get_txt_name(self, mxdname):
+        if mxdname == "CURRENT":
+            try:
+                mxd = MAP.MapDocument(mxdname)
+                mxdname = mxd.filePath
+                del mxd
+            except NameError:
+                mxdname = ""
+        if mxdname:
+            (path,nameext) = os.path.split(mxdname)
+            (name,ext) = os.path.splitext(nameext)
+            return os.path.join(path, name + '.txt')
+        return ""
+    
     def updateParameters(self, parameters):
         """Modify the values and properties of parameters before internal
         validation is performed.  This method is called whenever a parameter
         has been changed."""
+        
+        # Has the user altered the output location already?
+        # No - so make a new one up based on the mxdname.
+        if not parameters[1].altered:
+            parameters[1].value = self.get_txt_name(parameters[0].valueAsText)
+        
         return
 
     def updateMessages(self, parameters):
@@ -57,8 +84,8 @@ class MXDReport(object):
         return
 
     def execute(self, parameters, messages):
-        mxdname = self.mxdname 
-        output  = parameters[0].valueAsText
+        mxdname = parameters[0].valueAsText 
+        output  = parameters[1].valueAsText
         
         mxd = MAP.MapDocument(mxdname)
         messages.addMessage("MXD file: %s" % mxd.filePath)
