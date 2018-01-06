@@ -30,7 +30,6 @@ ANGLE = 0
 
 # ==============================================================================
 
-
 def readtable(mxd, df, tablename, fields, whereclause):
     """ Read a table of values to be displayed as cancelled taxlot numbers. """
     tableview = row = None
@@ -63,7 +62,7 @@ def qqwhere(q, qq):
     return rval
 
 def get_mapnumber_query(mapnumber):
-    """ Convert a mapnumber (possibly with a wildcard in it) into a SQL query. """
+    """ Convert a short mapnumber (possibly with a wildcard in it) into a SQL query. """
     
     # I have to use different delimiters for different databases. Sigh.
     mapnumber_field = ORMapLayers.MapNumberField
@@ -72,11 +71,14 @@ def get_mapnumber_query(mapnumber):
     #wildcard    = '*'
     return "%s%s%s LIKE '%s'" % (delimiter_l, mapnumber_field, delimiter_r, mapnumber)
 
-def set_main_definition_queries(mxd, df, mapnumber, mapscale, query):
+def set_main_definition_queries(mxd, df, orm, mapnumber, mapscale, query):
     """ Set definition queries for each layer in the main dataframe. 
         SEARCH FOR AN ITEM IN THE DEF QUERY TABLE FIRST... 
         OTHERWISE SET TO CONFIG TABLE VALUES. """
 
+# NOTE "mapnumber" and "mapscale" can be used in config file
+# so don't go removing them...
+        
 # So far, mapscale is not used in any queries... 
         
     arcpy.SetProgressorLabel("Set Main DF definition queries.")
@@ -101,131 +103,83 @@ def set_main_definition_queries(mxd, df, mapnumber, mapscale, query):
                     pass
 
     else:
-        aprint("Using map config file; no optional DefCustomTable \"%s\"." % ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE)
-        # Define all the layername, query definition pairs as a list of tuples.
-        # Add on the "EXTRA" layers (20 of them)
-        # Then evaluate (using "eval()" each expression so that the script does not choke
-        # if a layer is not defined in the config file.
-        l_layers = [
-                    ("LOTSANNO_LAYER", "ORMapLayers.LOTSANNO_QD"),
-                    ("PLATSANNO_LAYER", "PLATSANNO_QD"),
-                    ("TAXCODEANNO_LAYER", "TAXCODEANNO_QD"),
-                    ("TAXNUMANNO_LAYER", "TAXNUMANNO_QD"),
-                    ("ACRESANNO_LAYER", "ACRESANNO_QD"),
-                    ("ANNO10_LAYER", "ANNO10_QD"),
-                    ("ANNO20_LAYER", "ANNO20_QD"),
-                    ("ANNO30_LAYER", "ANNO30_QD"),
-                    ("ANNO40_LAYER", "ANNO40_QD"),
-                    ("ANNO50_LAYER", "ANNO50_QD"),
-                    ("ANNO60_LAYER", "ANNO60_QD"),
-                    ("ANNO100_LAYER", "ANNO100_QD"),
-                    ("ANNO200_LAYER", "ANNO200_QD"),
-                    ("ANNO400_LAYER", "ANNO400_QD"),
-                    ("ANNO800_LAYER", "ANNO800_QD"),
-                    ("ANNO2000_LAYER", "ANNO2000_QD"),
-                    ("CORNER_ABOVE_LAYER", "CORNER_ABOVE_QD"),
-                    ("TAXCODELINES_ABOVE_LAYER", "TAXCODELINES_ABOVE_QD"),
-                    ("TAXLOTLINES_ABOVE_LAYER", "TAXLOTLINES_ABOVE_QD"),
-                    ("REFLINES_ABOVE_LAYER", "REFLINES_ABOVE_QD"),
-                    ("CARTOLINES_ABOVE_LAYER", "CARTOLINES_ABOVE_QD"),
-                    ("WATERLINES_ABOVE_LAYER", "WATERLINES_ABOVE_QD"),
-                    ("WATER_ABOVE_LAYER", "WATER_ABOVE_QD"),
-                    ("MAPINDEXSEEMAP_LAYER", "MAPINDEXSEEMAP_QD"),
-                    ("MAPINDEX_LAYER", "MAPINDEX_QD"),
-                    ("CORNER_BELOW_LAYER", "CORNER_BELOW_QD"),
-                    ("TAXCODELINES_BELOW_LAYER", "TAXCODELINES_BELOW_QD"),
-                    ("TAXLOTLINES_BELOW_LAYER", "TAXLOTLINES_BELOW_QD"),
-                    ("REFLINES_BELOW_LAYER", "REFLINES_BELOW_QD"),
-                    ("CARTOLINES_BELOW_LAYER", "CARTOLINES_BELOW_QD"),
-                    ("WATERLINES_BELOW_LAYER", "WATERLINES_BELOW_QD"),
-                    ("WATER_BELOW_LAYER", "WATER_BELOW_QD"),
-                    ]
-        for extra in range(1,20):
-            l_layers.append(("EXTRA%d_LAYER" % extra,"EXTRA%d_QD" % extra))
-
-        default_q = ORMapLayers.DEFAULT_QD
+        print("Using map config file; no optional DefCustomTable \"%s\"." % ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE)
 
         # Convert the layers into a dictionary
         
         d_layer = {}
-        for (v_lyrname,v_dq) in l_layers:
-            try:
-                layername = eval("ORMapLayers."+v_lyrname)
-            except AttributeError:
-                print("Layer not found \"%s\"; ignoring it." % v_lyrname)
-                continue
-            try:
-                dq = eval("ORMapLayers."+v_dq)
-            except AttributeError:
-                print("Query not found \"%s\"; using default." % v_dq)
-                dq = default_q
-            #print(layername, dq)
-            d_layer[layername] = dq.replace("*MapNumber*", mapnumber).replace("*MapScale*", str(mapscale))                    
+        for (layername,pyexdq) in ORMapLayers.MainLayers:
+
+            # evaluate expression to convert it from python to SQL
+            dq=None
+            if pyexdq:
+                try:
+                    dq = eval(pyexdq)
+                except Exception as e:
+                    print("An eval problem in python expression \"%s\"." % pyexdq, e)
+                    pass
+            
+            if dq:
+                #print("dict: \"%s\" : \"%s\"" % (layername, dq))
+                d_layer[layername] = dq
 
         # Now make one pass through the dataframe and actually fix up the definition queries.
-
+        
         for lyr in MAP.ListLayers(mxd, "", df):
             if lyr.supports("DATASETNAME"):
                 try:
-                    lyr.definitionQuery = d_layer[lyr.name]
-                    print("layername: %s query: \"%s\"" % (lyr.name, lyr.definitionQuery))
+                    dq = d_layer[lyr.name]
+                    lyr.definitionQuery = dq
+                    print("New query on layer %s set to \"%s\"." % (lyr.longName, lyr.definitionQuery))
                 except KeyError:
-                    print("No need to change layer \"%s\"." % lyr.name)
+                    if lyr.definitionQuery:
+                        dq = '"' + lyr.definitionQuery + '"'
+                        print("Query on layer \"%s\" is %s." % (lyr.longName, dq))
+                    
+            # I tested using "visible" attribute to turn on/off layers and it worked fine.
+#            try:
+#                s = d_anno[lyr.name]
+#                lyr.visible = (mapscale == s)
+#                aprint("%s %s %s" % (lyr.name, mapscale, s))
+#            except KeyError:
+#                pass
+
         return
 
-def adjust_masking(mxd, maindf, orm, mapnumber):
-    """ Some of the layers in our current test map are 
-    "masks" (show everything but the selection)
-    and some are "highlighters" (show selected polygon(s)). 
+def update_locator_maps(mxd, orm, mapnumber):
+    """ Update the locator maps to emphasize the area of interest.
+    You can either create a mask or a highlighter based on queries in the configuration.
     Set up query definitions in each dataframe to control this. """
 
-    arcpy.SetProgressorLabel("Adjust feature masks")
+    arcpy.SetProgressorLabel("Update locator maps")
 
-    # Try to read each dataframe name from config
-    # and fall back to a default name.
+    # TODO - If one of these maps is going to be blank we should probably move it off the map
     
-    try:
-        locatordf_name = ORMapLayers.LocatorDF
-    except AttributeError:
-        locatordf_name = "LocatorDF"    
-    locatordf   = get_dataframe(mxd, locatordf_name)
-
-    try:
-        sectionsdf_name = ORMapLayers.SectionsDF
-    except AttributeError:
-        sectionsdf_name = "SectionsDF"    
-    sectionsdf  = get_dataframe(mxd, sectionsdf_name)
-
-    try:
-        qsectionsdf_name = ORMapLayers.QSectionsDF
-    except AttributeError:
-        qsectionsdf_name = "QSectionsDF"
-    qsectionsdf = get_dataframe(mxd, qsectionsdf_name)
-
-    # Set up the definition query on each data frame layer to highlight polygons.
-
-    query = ""
-    if mapnumber: query = ORMapLayers.MAPINDEXMASK_QD % mapnumber 
-    set_definition_query(mxd, maindf, ORMapLayers.MAPINDEXMASK_LAYER, query)
-
-    query = ""
-    if mapnumber: query = ORMapLayers.LOCATOR_QD % (int(orm.township), int(orm.range), orm.range_dir) 
-    set_definition_query(mxd, locatordf, ORMapLayers.LOCATOR_LAYER, query)
-
-    query = ""
-    if orm.section: query = ORMapLayers.SECTIONS_QD % orm.section
-    set_definition_query(mxd, sectionsdf, ORMapLayers.SECTIONS_LAYER, query)
-        
-    query = ORMapLayers.QSECTIONS_QD % qqwhere(orm.quarter, orm.quarterquarter)
-    set_definition_query(mxd, qsectionsdf, ORMapLayers.QTRSECTIONS_LAYER, query)
+    for dfname,layers,extlayername,scale in [
+            (ORMapLayers.LocatorDF,  ORMapLayers.LocatorLayers,  ORMapLayers.LocatorExtentLayer,  ORMapLayers.LocatorScale),
+            (ORMapLayers.SectionDF,  ORMapLayers.SectionLayers,  ORMapLayers.SectionExtentLayer,  ORMapLayers.SectionScale),
+            (ORMapLayers.QSectionDF, ORMapLayers.QSectionLayers, ORMapLayers.QSectionExtentLayer, ORMapLayers.QSectionScale),
+            ]:
+        df = get_dataframe(mxd, dfname)
+        for layername, qd in layers:
+            query = ""
+            if qd: 
+                query = eval(qd) 
+            set_definition_query(mxd, df, layername, query) 
+        if extlayername:
+            # Pan and zoom are optional in locator maps.
+            ext_layer = get_layer(mxd, df, extlayername)
+            df.extent = ext_layer.getExtent()
+            if scale: df.scale  = scale
 
     return
 
-def build_titles(orm, s_mapscale, s_cityname):
+def build_titles(orm, s_cityname):
     """ Build text strings usable for short and long titles and scale text.
     Return them as a tuple. """
     
-    shortmaptitle = ('%s.%s.%s' % (orm.township, orm.range, orm.section)).rstrip('.')
+    shortmaptitle = '%s.%s' % (orm.township, orm.range)
+    if orm.section>0: shortmaptitle += ".%d" % orm.section
     if orm.quarter != '0':
         shortmaptitle += orm.quarter
         if orm.quarterquarter != '0': shortmaptitle += orm.quarterquarter
@@ -234,31 +188,25 @@ def build_titles(orm, s_mapscale, s_cityname):
 
     townrng = "T" + str(orm.township) + orm.township_frac + orm.township_dir + ' ' + \
          "R" + str(orm.range)    + orm.range_frac    + orm.range_dir    + " WM"
-    section_text = orm.qqtext()
-    scale_text   = "1\" = %d'" % (int(s_mapscale) / 12)
 
-    if s_mapscale == "24000":
-        longmaptitle = townrng
-    elif s_mapscale == "4800":
-        longmaptitle = "SECTION " + str(orm.section) + " " + townrng    
-    else:
-        longmaptitle = section_text + " SEC." + str(orm.section) + " " + townrng
-                 
-        if str(section_text)=="":
-            longmaptitle = "SECTION " + str(orm.section) + " " + townrng
-        if str(orm.section)=="":
-            longmaptitle = townrng
+    longmaptitle = townrng
+    if str(orm.section):
+        qqtext = orm.qqtext()
+        if qqtext:
+            l1 = qqtext + " SEC." + str(orm.section)
+        else:
+            l1 = "SECTION " + str(orm.section)   
 
-    #MODIFY TITLE FOR NON-STANDARD MAPS
-    if orm.maptype == "S":
-        longmaptitle = "SUPPLEMENTAL MAP NO. %d\n" % orm.mapnumber + longmaptitle
-    elif orm.maptype == "D":
-        longmaptitle = "DETAIL MAP NO. %d\n" % orm.mapnumber + longmaptitle
-    elif orm.maptype == "T":
-        longmaptitle = "SHEET NO. %d\n" % orm.mapnumber + longmaptitle
+        longmaptitle = l1 + ' ' + townrng
+        try:
+            # If there is a "map suffix" then split the title on 2 lines.
+            s_sfx = {'D':'DETAIL', 'S':'SUPPLEMENTAL', 'T':'DETAIL'}[orm.mapsuffixtype]
+            longmaptitle = l1 + '\n' + townrng + " %s %d" % (s_sfx, orm.mapsuffixnumber)
+        except KeyError:
+            pass
 
-    print(shortmaptitle, longmaptitle, scale_text)
-    return shortmaptitle, longmaptitle, scale_text
+    print("\"%s\" \"%s\"" % (shortmaptitle, longmaptitle))
+    return shortmaptitle, longmaptitle
 
 def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_cityname):
     
@@ -274,11 +222,6 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
         # Use configuration - one set up for every map page.
         aprint("Using configuration file for page layout; no PageLayoutTable found. \"%s\". Query: %s" % (ORMapLayers.PAGELAYOUT_TABLE, mapnumber_query))
 
-        dataframe_minx = ORMapPageLayout.DataFrameMinX
-        dataframe_miny = ORMapPageLayout.DataFrameMinY
-        dataframe_maxx = ORMapPageLayout.DataFrameMaxX
-        dataframe_maxy = ORMapPageLayout.DataFrameMaxY
-        #df.extent = extent
         df.rotation = ORMapPageLayout.MapAngle
         
 #        TitleX = ORMapPageLayout.TitleX
@@ -307,10 +250,6 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
     else:
         # Use page layout table
         
-#        dataframe_minx = pagelayoutrow.DataFrameMinX
-#        dataframe_miny = pagelayoutrow.DataFrameMinY
-#        dataframe_maxx = pagelayoutrow.DataFrameMaxX
-#        dataframe_maxy = pagelayoutrow.DataFrameMaxY
 
 #        MapPositionX = pagelayoutrow.MapPositionX
 #        MapPositionY = pagelayoutrow.MapPositionY
@@ -341,9 +280,11 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
 #    CountyNameDist = ORMapPageLayout.CountyNameDist
 #    MapScaleDist = ORMapPageLayout.MapScaleDist
 
+    (shorttitle, longtitle) = build_titles(orm, s_cityname)
     
-    (shorttitle, longtitle, scale_text) = build_titles(orm, s_mapscale, s_cityname)
-    
+    # Legacy: I don't use this, I let ArcMap set up scale text.
+    scale_text   = "1\" = %d'" % (int(s_mapscale) / 12)
+
     for elm in MAP.ListLayoutElements(mxd):
         #TEXT ELEMENTS
         if elm.name=="MapNumber":
@@ -391,6 +332,7 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
 #            elm.elementPositionX = DisclaimerX
 #            elm.elementPositionY = DisclaimerY
             pass
+        
         #PAGE ELEMENTS
 #        elif elm.name == maindf.name:
 #            elm.elementPositionX = dataframe_minx
@@ -405,91 +347,151 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
 #        elif elm.name == "ScaleBar":
 #            elm.elementPositionX = ScaleBarX
 #            elm.elementPositionY = ScaleBarY
+    
+        elif elm.name == ORMapPageLayout.CancelledTaxlotsElement:
+            cancelledtaxlot_count = populate_cancelled_taxlot_table(mxd, s_mapnum)
+            offset = 0
+            if cancelledtaxlot_count == 0:
+                # Move the cancelled taxlot table off the layout
+                offset = 4
+            elm.elementPositionX = ORMapPageLayout.CancelledTaxlotsXY[0] + offset
+            elm.elementPositionY = ORMapPageLayout.CancelledTaxlotsXY[1]
+            
+            
+            
+        # Move the locator maps off the page if they are not useful.
+           
+        elif elm.name == ORMapLayers.SectionDF:
+            offset = 4
+            if orm.section > 0:
+                offset = 0
+            elm.elementPositionX = ORMapPageLayout.LocatorSectionXY[0] + offset
+            elm.elementPositionY = ORMapPageLayout.LocatorSectionXY[1]
+
+
+        elif elm.name == ORMapLayers.QSectionDF:
+            offset = 4
+            if s_mapscale < 24000:
+#            if orm.quarter != "0":
+                offset = 0
+            elm.elementPositionX = ORMapPageLayout.LocatorQSectionXY[0] + offset
+            elm.elementPositionY = ORMapPageLayout.LocatorQSectionXY[1]
+        
     return
 
-def populate_cancelled_taxlot_table(mxd, mapnumber_arg):
-
+def populate_cancelled_taxlot_table(mxd, mapnumber):
+    """ Fill in the cancelled taxlot table in the page. 
+        Return the number of cancelled taxlots. """
+        
     # Might want to move the "cancelled" table off the page if it's empty???
 
     arcpy.SetProgressorLabel("Populate cancelled taxlot table")
         
     # Note that this function is not affected by any query definition.
-    table = read_cancelled(ORMapLayers.CANCELLEDNUMBERS_TABLE, mapnumber_arg)
-    if not len(table): 
-        aprint("No cancelled taxlot numbers found for \"%s\"." % mapnumber_arg)
-        return
-    aprint("Loaded %d cancelled taxlots." % len(table))
+    cancelled_taxlots = read_cancelled(ORMapLayers.CancelledNumbersTable, mapnumber)
+    ncols = len(ORMapPageLayout.CancelledNumbersColumns)
+    cancelled_elem = []
 
-    cancelled_elem = [None, None, None, None]
-    ncols = 4 # "can1...can4"
+    # Empty out the text boxes
+
     for x in xrange(0, ncols):
         try:
-            cancelled_elem[x] = MAP.ListLayoutElements(mxd, "TEXT_ELEMENT", "can%d" % (x+1))[0]
-            cancelled_elem[x].text = " " # Important that this element has some text in it (event just a single space) so ArcMap does not "lose" it.
+            cancelled_elem.append(None)
+            cancelled_elem[x] = MAP.ListLayoutElements(mxd, "TEXT_ELEMENT", ORMapPageLayout.CancelledNumbersColumns[x])[0]
+            cancelled_elem[x].text = " " # This element has some text in it (event just a single space) so ArcMap does not "lose" it.
         except Exception as e:
             aprint("Exception \"e\" when initializing cancelled column %d" % (e,x))
             pass
 
-    max_y, columns = make_table(table, ncols)
-
-    # Adjust the font size of the table according to the number of rows
-    fontsize = 10
-    maxrows = 10 # ORMapPageLayout.MaxCancelledRows
-    if max_y > maxrows: fontsize = 8
-
-    x = 0
-    for column in columns:
-        cancelled_elem[x].text = column
-        cancelled_elem[x].fontSize = fontsize
-        x += 1
+    if len(cancelled_taxlots): 
+        aprint("Loading %d cancelled taxlots." % len(cancelled_taxlots))
         
-    return
+        # Sort out the data into as ;ost pf columns
+        max_y, columns = make_table(cancelled_taxlots, ncols)
+
+        # Adjust the font size of the table according to the number of rows
+        fontsize = 10
+        maxrows = 10 # ORMapPageLayout.MaxCancelledRows
+        if max_y > maxrows: fontsize = 8
+
+        x = 0
+        for column in columns:
+            cancelled_elem[x].text = column
+            cancelled_elem[x].fontSize = fontsize
+            x += 1
+        
+    return len(cancelled_taxlots)
 
 # ==============================================================================
 
 def update_page_layout(mxd, mapnumber):
     """Update the map document page layout using the given map_number."""
     
+    orm = ormapnum()
+    orm.expand(mapnumber)   # convert short map number to ormap taxlot number
+
     try:
         maindf_name = ORMapLayers.MainDF
     except AttributeError:
         maindf_name = "MainDF"
 
-    maindf = get_dataframe(mxd, maindf_name) 
-    mapnumber_query = get_mapnumber_query(mapnumber)
+    maindf = get_dataframe(mxd, maindf_name)
 
-    index_layer = get_layer(mxd, maindf, ORMapLayers.MAPINDEX_LAYER)
-    if not index_layer: 
+    mapindex_layer = get_layer(mxd, maindf, ORMapLayers.MapIndexLayer[0])
+    if not mapindex_layer: 
         # can't function without an index layer!
         return
+    mapindex_query = eval(ORMapLayers.MapIndexLayer[1])
     row = None
-    with arcpy.da.SearchCursor(index_layer.dataSource, mapindex_fields, mapnumber_query) as cursor:
-        mapindex_scale = 0
-        mapindex_mapnumber = ""
+    count = 0
+    mapindex_scale = 0
+    mapindex_mapnumber = ""
+    with arcpy.da.SearchCursor(mapindex_layer.dataSource, mapindex_fields, mapindex_query) as cursor:
         for row in cursor:
-            mapindex_mapscale = max(mapindex_scale, row[MAPSCALE])
-            if row[MAPNUMBER] and not mapindex_mapnumber or (len(mapindex_mapnumber) > len(row[MAPNUMBER])): 
-                mapindex_mapnumber = row[MAPNUMBER]
-                mapindex_ormapnum  = row[ORMAPNUM]
-                mapindex_cityname  = row[CITYNAME]
-    orm = ormapnum()
-    orm.unpack(mapindex_ormapnum)
+            mapindex_mapnumber = row[MAPNUMBER]
+            mapindex_ormapnum  = row[ORMAPNUM]
+            mapindex_cityname  = row[CITYNAME]
+            mapindex_scale     = row[MAPSCALE]
+            count += 1
+            
+    if count != 1:
+        eprint("Query \%s\" matched %d records. FIX THIS, there should only be one." % (mapindex_query, count))
 
-    set_main_definition_queries(mxd, maindf, mapnumber, mapindex_mapscale, mapnumber_query)
+    aprint("Read from index file: %s %s %s %s" % (mapindex_mapnumber, mapindex_ormapnum, mapindex_cityname, mapindex_scale))
+    mapnumber_query = get_mapnumber_query(mapindex_mapnumber)
+    set_main_definition_queries(mxd, maindf, orm, mapindex_mapnumber, mapindex_scale, mapnumber_query)
 
-    # After setting the defintion query on the index layer, we can just zoom to
-    # the extent of that layer to set up the view. After doing that though
-    # we still have to set the scale to something useful.   
-    maindf.extent = index_layer.getExtent()
-    maindf.scale  = mapindex_mapscale
-    aprint("Scale: %s" % mapindex_mapscale)
+    # Set definition query, then zoom to extent of layer.
+    # then force the scale to the scale defined in the index.
+ 
+    maindf.extent = mapindex_layer.getExtent()
+    
+    # MapIndex has to have the relative scale not the "1 inch = N feet" scale
+    # I can fix there here, it might be better??
+    
+    lookup_scale = { 10   :   120,
+                     20   :   240,
+                     30   :   300,
+                     40   :   480,
+                     50   :   600,
+                     60   :   720, 
+                     100  :  1200, 
+                     200  :  2400, 
+                     400  :  4800, 
+                     2000 : 24000,
+                     }
+    try:
+        scale = lookup_scale[mapindex_scale]
+    except KeyError:
+        scale = mapindex_scale # assume it is already recalculated
+    maindf.scale  = scale
+    aprint("Set main df scale to %d." % scale)
+    
+#    table_defquery = readtable(mxd, maindf, ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE, "*", mapnumber_query)
+#    if not len(table_defquery): aprint("Unable to load optional DefCustomTable \"%s\". Query: %s" % (ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE, mapnumber_query))
 
-    table_defquery = readtable(mxd, maindf, ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE, "*", mapnumber_query)
-    if not len(table_defquery): aprint("Unable to load optional DefCustomTable \"%s\". Query: %s" % (ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE, mapnumber_query))
-
-    update_page_elements(mxd, maindf, orm, mapnumber_query, mapindex_mapnumber, mapindex_mapscale, mapindex_cityname)
-    populate_cancelled_taxlot_table(mxd, mapnumber)
-    adjust_masking(mxd, maindf, orm, mapnumber)
+    update_page_elements(mxd, maindf, orm, mapindex_query, mapindex_mapnumber, scale, mapindex_cityname)
+    update_locator_maps(mxd, orm, mapindex_mapnumber)
 
     arcpy.RefreshActiveView()
 
@@ -505,10 +507,15 @@ if __name__ == '__main__':
     except IndexError:
         # Run in the debugger
         mxdname = "TestMap.mxd"
-        mapnumber = "8.10.25*"
 
-    print("mxdname: %s mapnumber: %s" % (mxdname, mapnumber))
-    mxd = MAP.MapDocument(mxdname)
-    update_page_layout(mxd, mapnumber)
-    del mxd    
+    for mapnumber in ["8.10", "8.10.5.CD", "8.10.5CD D1", "8.10.5CD D2", ]:
+        #mapnumber = "0408.00N10.00W05CD--0000"
+        #mapnumber = "0408.00N10.00W05CD--D001"
+        #mapnumber = "0408.00N10.00W05CD--D002"
+
+        print("mxdname: %s mapnumber: %s" % (mxdname, mapnumber))
+        mxd = MAP.MapDocument(mxdname)
+        update_page_layout(mxd, mapnumber)
+        del mxd    
+
 # That's all

@@ -18,102 +18,104 @@
 # ESRI and or Microsoft change it according to the database type!
 # You probably will have to change it if you switch to a newer geodatabase.
 
+__base_qd  = "([MapNumber]='{0}' OR [MapNumber] IS NULL OR [MapNumber]='')" 
+# The variables "mapnumber" and "mapscale" are defined in the zoomToMapNumber.py script and get eval'ed in.
+DEFAULT_QD = "\"" + __base_qd + "\".format(mapnumber)"
+ANNO_QD    = "\"" + __base_qd + " AND ([MapScale]={1} OR [MapScale]={1}/12)\".format(mapnumber, mapscale)"
+
+# LineType
+#  8  Public road ROW
+# 14  Railroad ROW 
+# 32  Parcel boundary
+# 51  Detail Map Boundary
+# 52  Detail Map Boundary
+
+# For MDB and shapefiles the case of field names does not matter.
+MapNumberField = "MapNumber"
+ORMapNumberField = "OrMapNum"
+
 ##### MAIN DATA FRAME #####
 
 MainDF = "MapView"
-MapNumberField = "MapNumber"
+MainLayers=[
+    ("MapIndex",           "\"[OrMapNum] =  '{0}'\".format(orm.ormapnumber)"),
+    ("MapIndex - SeeMaps", "\"[OrMapNum] <> '{0}'\".format(orm.ormapnumber)"),
+    ("MapIndex - Mask",    "\"[OrMapNum] <> '{0}'\".format(orm.ormapnumber)"),
 
-LOTSANNO_LAYER="LotsAnno"
-PLATSANNO_LAYER="PlatsAnno"
-TAXCODEANNO_LAYER="TaxCodeAnno"
-TAXNUMANNO_LAYER="TaxlotNumberAnno"
-ACRESANNO_LAYER="TaxlotAcresAnno"
+    ("LotsAnno",         ANNO_QD),
+    ("PlatsAnno",        ANNO_QD),
+    ("TaxCodeAnno",      ANNO_QD),
+    ("TaxlotNumberAnno", ANNO_QD),
+    ("AcresAnno",        ANNO_QD),
+    ("Anno0010scale",    ANNO_QD),        
+    ("Anno0020scale",    ANNO_QD),        
+    ("Anno0030scale",    ANNO_QD),        
+    ("Anno0040scale",    ANNO_QD),        
+    ("Anno0050scale",    ANNO_QD),        
+    ("Anno0100scale",    ANNO_QD),        
+    ("Anno0200scale",    ANNO_QD),        
+    ("Anno0400scale",    ANNO_QD),        
+    ("Anno0800scale",    ANNO_QD),        
+    ("Anno2000scale",    ANNO_QD),        
 
-ANNO10_LAYER="Anno0010scale"
-ANNO20_LAYER="Anno0020scale"
-ANNO30_LAYER="Anno0030scale"
-ANNO40_LAYER="Anno0040scale"
-ANNO50_LAYER="Anno0050scale"
-ANNO60_LAYER="Anno0060scale"
-ANNO100_LAYER="Anno0100scale"
-ANNO200_LAYER="Anno0200scale"
-ANNO400_LAYER="Anno0400scale"
-ANNO800_LAYER="Anno0800scale"
-ANNO2000_LAYER="Anno2000scale"
+    # Setting the query to "" means you want to clear any definition query that might be set in the MXD.
+    # If you don't want a layer's query ERASED then don't list it with a query of "".
+    
+    ('PLSSLines - Above',         '"[LineType]=44 AND [MapScale]={0}".format(mapscale)'),
+#   ("Corner - Above",            ""),
+#   ("TaxCodeLines - Above",      ""),
+    ("TaxlotLines - Above",       '"[LineType] = 8 or [LineType] = 14 or [LineType] = 51 or [LineType] = 52"'),
+#   ("ReferenceLines - Above",    ""),
+#   ("CartographicLines - Above", ""),
+#   ("WaterLines - Above",        ""),
+#   ("Water - Above",             '"[WaterType]<>\'Land\'"')
 
-DEFAULT_QD="[MapNumber] LIKE '*MapNumber*' OR [MapNumber] is NULL OR [MapNumber] = ''"
-
-CORNER_ABOVE_LAYER="Corner - Above"
-CORNER_ABOVE_QD=""
-
-TAXCODELINES_ABOVE_LAYER="TaxCodeLines - Above"
-TAXCODELINES_ABOVE_QD=""
-
-TAXLOTLINES_ABOVE_LAYER="TaxlotLines - Above"
-TAXLOTLINES_ABOVE_QD="[LineType] = 8 or [LineType] = 14 or [LineType] = 51 or [LineType] = 52"
-
-REFLINES_ABOVE_LAYER="ReferenceLines - Above"
-REFLINES_ABOVE_QD=""
-
-CARTOLINES_ABOVE_LAYER="CartographicLines - Above"
-CARTOLINES_ABOVE_QD=""
-
-WATERLINES_ABOVE_LAYER="WaterLines - Above"
-WATERLINES_ABOVE_QD=""
-
-WATER_ABOVE_LAYER="Water - Above"
-WATER_ABOVE_QD=""
-
-MAPINDEXSEEMAP_LAYER="MapIndex - SeeMaps"
-MAPINDEXSEEMAP_QD=""
-
-MAPINDEX_LAYER="MapIndex - SeeMaps"
-#MAPINDEX_QD="[MapNumber] LIKE '%s'" use default
-
-MAPINDEXMASK_LAYER="MapIndex - Mask"
-MAPINDEXMASK_QD="NOT [MapNumber] LIKE '%s'"
-
-CORNER_BELOW_LAYER="Corner - Below"
-CORNER_BELOW_QD=""
-
-TAXCODELINES_BELOW_LAYER="TaxCodeLines - Below"
-TAXCODELINES_BELOW_QD=""
-
-TAXLOTLINES_BELOW_LAYER="TaxlotLines - Below"
-TAXLOTLINES_BELOW_QD=""
-
-REFLINES_BELOW_LAYER="ReferenceLines - Below"
-REFLINES_BELOW_QD=""
-
-CARTOLINES_BELOW_LAYER="CartographicLines - Below"
-CARTOLINES_BELOW_QD=""
-
-WATERLINES_BELOW_LAYER="WaterLines - Below"
-WATERLINES_BELOW_QD=""
-
-WATER_BELOW_LAYER="Water - Below"
-WATER_BELOW_QD=""
+#   ("Corner - Below",            ""),
+#   ("TaxCodeLines - Below",      ""),
+#   ("TaxlotLines - Below",       ""),
+#   ("ReferenceLines - Below",    ""),
+#   ("CartographicLines - Below", ""),
+#   ("WaterLines - Below",        ""),
+#    ("Water",                    '"[WaterType]<>\'Land\'"'),
+]
+MapIndexLayer = MainLayers[0]
 
 PAGELAYOUT_TABLE="PageLayoutElements"
-CANCELLEDNUMBERS_TABLE="K:/taxmaped/Clatsop/towned/cancelled.xlsx"
 CUSTOMDEFINITIONQUERIES_TABLE="CustomDefinitionQueries"
-
-# You can define up to 20 "extra" layers. Just number them like this.
-EXTRA1_LAYER="ExtraLayer1"
-EXTRA1_QD=""
 
 ##### locator map data frame #####
 LocatorDF = "LocatorDF"
-LOCATOR_LAYER="Highlight - MapIndex"
-LOCATOR_QD="[TR] = '%02d%02d%s'"  # This expects township, range, and range direction.
+LocatorScale = None
+LocatorLayers=[
+        ("MapIndex TR Highlight", "\"[TRlabel]='{0}{1}{2}{3}'\".format(int(orm.township), orm.township_dir, int(orm.range), orm.range_dir)"),
+        ]
+LocatorExtentLayer = None # Don't pan this locator map. It shows the whole county.
 
 ##### Sections map data frame #####
-SectionsDF = "SectionsDF"
-SECTIONS_LAYER="Highlight - Sections"
-SECTIONS_QD="[SectionNum] = %s" # This is an integer so don't wrap in quotes.
+SectionDF = "SectionsDF"
+SectionScale = 180000
+SectionLayers=[
+        ("MapIndex TR Outline", "\"[TRlabel]='{0}{1}{2}{3}'\".format(int(orm.township), orm.township_dir, int(orm.range), orm.range_dir)"),
+        
+        # SHAPEFILE!!!
+        ("Section - Highlight", '"\\"SECTION\\" = \'{0}\'".format(orm.section)'),
+        ("Sections",        '"\\"TR\\" =  \'{0}{1}{2}{3}\'\".format(int(orm.township), orm.township_dir, int(orm.range), orm.range_dir)'),
+        ("Sections - Mask", '"\\"TR\\" <> \'{0}{1}{2}{3}\'\".format(int(orm.township), orm.township_dir, int(orm.range), orm.range_dir)'),
+        ]
+SectionExtentLayer = SectionLayers[0][0]
 
 ##### Quarter sections map data frame #####
-QSectionsDF = "QSectionsDF"
-QTRSECTIONS_LAYER="Highlight - QtrSections"
-QSECTIONS_QD="[QSectName] = '%s'"
+QSectionDF = "QSectionsDF"
+QSectionScale = 48000
+QSectionLayers=[
+        ("MapIndex QSection Highlight", "\"[OrMapNum]='{0}'\".format(orm.ormapnumber)"),
+        
+        # SHAPEFILE!!!
+        ("Sections - Mask", '"\\"SECTION\\" <> \'{0}\'".format(orm.section)'),
+        ("Section",         '"\\"SECTION\\" =  \'{0}\'".format(orm.section)'),
+        ]
+QSectionExtentLayer = QSectionLayers[0][0]
+
+CancelledNumbersTable = "K:/taxmaped/Clatsop/towned/cancelled.xlsx"
+
 

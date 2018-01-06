@@ -7,31 +7,32 @@ Created on Thu Dec 14 11:16:07 2017
 """
 from __future__ import print_function
 import struct
+from mapnum import mapnum
 
 # dict to translate part to fraction
 d_partfrac = {
-        None:"",
-        0.00:"",
-        0.25:"1/4",
-        0.50:"1/2",
-        0.75:"3/4",
+         None:"",
+        '.00':"",
+        '.25':"1/4",
+        '.50':"1/2",
+        '.75':"3/4",
         }
 
 class ormapnum(object):
     
-    county         = 4     # County as a number, 1 to 34 or something.
-    township       = "00"
-    township_part  = .50   # 0 or 25 or 50 or 75
-    township_dir   = "N"   # N or S
-    range          = "00"
-    range_part     = .00
-    range_dir      = "E"   # E or W
-    section        = 0     # 01-31
-    quarter        = "0"   # 0 or A
-    quarterquarter = "0"
-    anomaly        = "--"  # ?? I wonder what this is for ??
-    maptype        = "S"   # 0 or D for Detail or S for Supplemental or T for Sheet
-    mapnumber      = 25
+    county          = 4     # County as a number, 1 to 34 or something.
+    township        = 0
+    township_part   = '.00'   # 0 or 25 or 50 or 75
+    township_dir    = "N"   # {N|S}
+    range           = 0
+    range_part      = '.00'
+    range_dir       = "W"   # {E|W}
+    section         = 0     # 01-31
+    quarter         = "0"   # {0|A|B|C|D}
+    quarterquarter  = "0"   # {0|A|B|C|D}
+    anomaly         = "--"  # ?? I wonder what this is for ??
+    mapsuffixtype   = "0"   # {0 | D for Detail | S for Supplemental | T for Sheet}
+    mapsuffixnumber = 0
     
     def __init__(self):
         self.township_frac = d_partfrac[self.township_part]
@@ -39,16 +40,34 @@ class ormapnum(object):
         return
     
     def __str__(self):
-        """ For now this is just me doing debugging so return a tuple with all the parts as a string. """
-        return str((self.county, 
-            self.township, self.township_part, self.township_frac, self.township_dir, 
-            self.range, self.range_part, self.range_frac, self.range_dir,
-            self.section,
-            self.quarter, self.quarterquarter,
-            self.anomaly,
-            self.maptype, self.mapnumber
-            ))
+        """ Return a packed 24 character ormap string. """
+        return self.ormapnumber
 
+    @property
+    def ormapnumber(self):
+        """ Put all the properties into a standard ORMAP string. """
+        
+        dst = self.mapsuffixtype
+        if not dst: dst = '0'
+        return "%02d%02d%3s%s%2s%3s%s%02d%s%s%s%s%03d" % (
+                self.county, 
+                self.township, self.township_part, self.township_dir, 
+                self.range,    self.range_part,    self.range_dir,
+                self.section,
+                self.quarter, self.quarterquarter,
+                self.anomaly,
+                self.mapsuffixtype, self.mapsuffixnumber
+                )
+    
+    
+    def qq(self):
+        s = ""
+        if self.quarter != '0':
+            s = self.quarter
+            if self.quarterquarter != '0':
+                s += self.quarterquarter
+        return s
+    
     def qqtext(self):
         """ Convert quarter,quarterquarter in letter format (0ABCD) to human readable text. """
         
@@ -69,55 +88,107 @@ class ormapnum(object):
             
         return s
     
-    def unpack(self, s):
-        """ Unpack an "ORTAXLOT" string into separate attribute fields. """
-        t = struct.unpack("2s2s3sc2s3sc2scc2sc3s", s)
-        self.county = t[0]
-        self.township = int(t[1])
-        self.township_part = float(t[2])
-        self.township_dir = t[3]
-        self.range = t[4]
-        self.range_part = float(t[5])
-        self.range_dir= t[6]
-        self.section = t[7]
-        self.quarter = t[8]
-        self.quarterquarter = t[9]
-        self.anomaly = t[10]
-        self.maptype = t[11]
-        self.mapnumber = int(t[12])
-        #print(t)
+    def shorten(self):
+        """ Return a shortened format that's easier to read. """
+       
+        shortie = "%s.%s" % (self.township, self.range)
+
+        section = self.section
+        if section > 0: 
+            shortie += ".%d" % section
+
+        shortie += self.qq()
+
+        if self.mapsuffixtype != '0':
+            shortie += " %s%s" % (self.mapsuffixtype,self.mapsuffixnumber)
+        return shortie
+
+    def expand(self, shortie):
+        """ Unpack a shortened string like "8.10.5CD D001 into properties. """
+        mn = mapnum(shortie)
+        self.county         = 4
+        self.township       = int(mn.t)
+        self.range          = int(mn.r)
+        self.section        = int(mn.s)
+        self.quarter        = "0"
+        self.quarterquarter = "0"
+        if len(mn.q)>0:
+            self.quarter = mn.q[0]
+            if len(mn.q)>1:
+                self.quarterquarter = mn.q[1]
+        if len(mn.suffix)>0:
+            self.mapsuffixtype = mn.suffix[0]
+            self.mapsuffixnumber = int(mn.suffix[1:])
+        else:
+            self.mapsuffixtype = '0'
+            self.mapsuffixnumber = 0
+            
+        return self.ormapnumber
         
-        self.township_frac = d_partfrac[self.township_part]
-        self.range_frac    = d_partfrac[self.range_part]
+    def unpack(self, s):
+        """ Unpack a 24 character "ORTAXLOT" string into separate properties. """
+        
+        try:
+            t = struct.unpack("2s2s3sc2s3sc2scc2sc3s", s)
+        except Exception as e:
+            print("Unpacking '%s': %s" % (s,e))
+            return
+            
+        self.county          = int(t[0])
+        self.township        = int(t[1])
+        self.township_part   = t[2]
+        self.township_dir    = t[3]
+        self.range           = int(t[4])
+        self.range_part      = t[5]
+        self.range_dir       = t[6]
+        self.section         = int(t[7])
+        self.quarter         = t[8]
+        self.quarterquarter  = t[9]
+        self.anomaly         = t[10]
+        self.mapsuffixtype   = t[11]
+        self.mapsuffixnumber = int(t[12])
+        #print(t)
+        self.township_frac   = d_partfrac[self.township_part]
+        self.range_frac      = d_partfrac[self.range_part]
             
         # if I were going to do bounds checks, here would be a good place for them.
         
         return
         
-    def pack(self):
-        """ Put all the attributes into a string. """
-        raise BaseException("I have not written pack method yet.")
-    
 # ---------------------------------------
     
 if __name__ == "__main__":
 # Unit test
 
-    mapnum = ormapnum()
-    print(mapnum)
+    orm = ormapnum()
     
+    # Test the handling of Q and QQ strings
     lq = ['0', 'A', 'B', 'C', 'D']
     for q in lq:
         for qq in lq:
-            mapnum.quarter = q
-            mapnum.quarterquarter = qq
-            print(q, qq, " => ", mapnum.qqtext())
+            orm.quarter = q
+            orm.quarterquarter = qq
+            print(q, qq, " => ", orm.qq(), '\t', orm.qqtext())
             
-    sample = u'0408.00N10.00W25AD--0000'
-    
-    mapnum.unpack(sample)
-    print(mapnum)
-
-    mapnum.pack()
-    print(mapnum)
+    # Test unpacking            
+    # Test expanding a shortie
+    samples = [
+                u'0408.00N10.00W0000--0000',
+                u'0408.00N10.00W25AD--D001',
+                u'0410.00N10.00W0000--0000',
+                u'0408.00N10.00W25AD--0000',
+                ]
+    for sample in samples:
+        orm.unpack(sample)
+        ormapnum = orm.ormapnumber
+        if ormapnum != sample: print(" assert pack fail \"%s\" != \"%s\"" % (sample, ormapnum))
+        print(ormapnum, len(ormapnum))
+        shortie = orm.shorten()
+        print(shortie)
+        expanded = orm.expand(shortie) 
+        print(expanded, len(expanded))
+        if sample != expanded: print(" assert expand failed\"%s\" != \"%s\"" % (sample, expanded))
+        print()
+        #orm.ormapnumber()
+        #print(mapnum)
     

@@ -8,26 +8,65 @@ Borrowed from the ESRI "ElementReport.py" script.
 """
 from __future__ import print_function
 from arcpy import mapping as MAP
-import os, sys
 from datetime import datetime
 
 def header(mxd):
-    print("PageLayout Report\t", datetime.today().strftime("%B %d, %Y"))
+    print("MXD Report\t", datetime.today().strftime("%B %d, %Y"))
     print(mxd.filePath)
     print()
 
+def layer(lyr):
+    # Show ONLY layers with a query.
+    if not(lyr.supports("DEFINITIONQUERY") and lyr.definitionQuery): return
+
+    space = True
+    msg = "\t"
+    if lyr.isBroken:
+        msg += "BROKEN "
+    if lyr.isGroupLayer:
+        msg += "Group "
+    elif lyr.isBasemapLayer:
+        msg += "Basemap "
+    elif lyr.isFeatureLayer:
+        msg += "Feature "
+    else:
+        msg += "    "
+        space = False
+        
+    print(msg+"Layer: %s" % lyr.longName)
+
+    if lyr.supports("DATASOURCE"):
+        print("\t%s" % lyr.dataSource)
+    if lyr.supports("SHOWLABELS"): 
+            print("\tShow labels: ON")
+    
+    if not lyr.visible: print("\tVisible: NO")
+    
+    if lyr.supports("DEFINITIONQUERY") and lyr.definitionQuery:
+        print("\tQuery: %s" % lyr.definitionQuery)
+        
+    if space: print()
+    
+def layers(mxd, df):
+    print("    Layers:")
+    for lyr in MAP.ListLayers(mxd, "", df):
+        layer(lyr)
+    print()
+    
 def dataframes(mxd):
     # Use the list of data frames so report order will be correct.
     l_df = MAP.ListDataFrames(mxd)
     print(" DATA FRAMES:")
     for df in l_df:
         elm = MAP.ListLayoutElements(mxd, wildcard=df.name)[0]
-        print("\t Name:                " + elm.name )
-        print("\t X Position:          " + str(elm.elementPositionX) )
-        print("\t Y Position:          " + str(elm.elementPositionY) )
-        print("\t Height:              " + str(elm.elementHeight) )
-        print("\t Width:               " + str(elm.elementWidth) )
+        print("    Dataframe:           " + elm.name)
+        print("    X Position:          " + str(elm.elementPositionX))
+        print("    Y Position:          " + str(elm.elementPositionY))
+        print("    Height:              " + str(elm.elementHeight))
+        print("    Width:               " + str(elm.elementWidth))
         print()
+        
+        layers(mxd, df)
     
 def element(mxd, element_name):
     l_elm = MAP.ListLayoutElements(mxd, element_name)
@@ -56,6 +95,7 @@ def element(mxd, element_name):
 def report(mxd):
     header(mxd)
     dataframes(mxd)
+    #return
     for e in ["TEXT_ELEMENT", 
               "PICTURE_ELEMENT", 
               "GRAPHIC_ELEMENT",

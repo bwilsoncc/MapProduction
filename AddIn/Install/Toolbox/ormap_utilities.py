@@ -10,6 +10,7 @@ from __future__ import print_function
 import os, sys
 import arcpy
 from arcpy import mapping as MAP
+from ormapnum import ormapnum
 import mapnum
 
 # =============================================================================
@@ -49,24 +50,25 @@ def get_layer(mxd, df, layername):
     layer = None
     try:
         layer = MAP.ListLayers(mxd, layername, df)[0]
-    except Exception as e:
-        print("Can't find layer \"%s\". \"%s\"" % (layername, e))
+    except IndexError:
+        print("Can't find layer \"%s\"/\"%s\"." % (df.name, layername))
     return layer
 
 def set_definition_query(mxd, df, layername, query):
     """ Set the definition query on a layer. """
     if df:
         layer = get_layer(mxd, df, layername)
+        if not layer: return False
         try:
-            layer = MAP.ListLayers(mxd, layername, df)[0]
             layer.definitionQuery = query
         except Exception as e:
-            print("Can't set query \"%s\" on layer \"%s\". \"%s\"" % (query, layername, e))
+            print("Can't set query \"%s\" on layer \"%s\"/\"%s\". \"%s\"" % (query, df.name, layername, e))
             return False
     return True
 
 def list_mapnumbers(fc, mapnum_fieldname):
-    """Return a sorted list of the contents of the mapnumber field in a featureclass. """
+    """Return a sorted list of the contents of the short mapnumber field in a featureclass. 
+    The problem with this field is that it does not know about "detail" and "supplemental" maps. """
     d_val = {} # use a dict to get rid of duplicates
     with arcpy.da.SearchCursor(fc, [mapnum_fieldname]) as cursor:
         for row in cursor:
@@ -75,7 +77,20 @@ def list_mapnumbers(fc, mapnum_fieldname):
                 d_val[mn.number] = row[0]
     return [d_val[k] for k in sorted(d_val)]
  
-    
+def list_ormapnumbers(fc, mapnum_fieldname):
+    """Return a sorted list of the shortened contents of ormapnumber field in a featureclass. 
+    The shortened version is similar to the "mapnum" field but has the map suffix appended if it exists,
+    for example "8.10.8.DC D1" indicates detail map #1 """
+    d_val = {} # use a dict to get rid of duplicates
+    orm = ormapnum()
+    with arcpy.da.SearchCursor(fc, [mapnum_fieldname]) as cursor:
+        for row in cursor:
+            if row[0]:
+                orm.unpack(row[0])
+                d_val[row[0]] = orm.shorten()
+
+    return [d_val[k] for k in sorted(d_val)]
+ 
 # =============================================================================
 if __name__ == "__main__":
     # unit tests
@@ -90,11 +105,13 @@ if __name__ == "__main__":
     layer = get_layer(mxd, df, layername)
     print("layer.dataSource=",layer.dataSource)
     
-    l = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
+    #l = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
+    #for m in l: print(m)
+
+    l = list_ormapnumbers(layer.dataSource, ORMapLayers.ORMapNumberField)
     for m in l:
         print(m)
+
     del mxd
     
-
 # That's all!
-

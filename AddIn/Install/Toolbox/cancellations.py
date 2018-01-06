@@ -10,7 +10,7 @@ import re
 
 # =============================================================================
 def read_cancelled(xlfile, query_mapnum):
-    """ Loads a lists of cancelled taxlot numbers for a given map number. 
+    """ Loads a list of cancelled taxlot numbers for a given map number. 
     Assumes the Excel file has its data in the first
     two columns (mapnum,canno) in its first worksheet. """
     
