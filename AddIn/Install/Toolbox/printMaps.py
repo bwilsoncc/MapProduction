@@ -26,9 +26,17 @@ def print_map(mxd, map_number, output_type, output_file):
     arcpy.SetProgressorLabel(msg)
 
     if output_type == 'PDF':
-        MAP.ExportToPDF(mxd, output_file)
+        try:
+            MAP.ExportToPDF(mxd, output_file)
+        except Exception as e:
+            print("Export to PDF failed with '%s'." % e)
+            pass
     elif output_type == 'JPEG':
-        MAP.ExportToJPEG(mxd, output_file)
+        try:
+            MAP.ExportToJPEG(mxd, output_file)
+        except Exception as e:
+            print("Export to JPEG failed with '%s'." % e)
+            pass
     else:
         print("Here is where we'd actually send the map to a printer.")
         
@@ -64,18 +72,17 @@ def print_maps(mxd, map_numbers, output_type, output_pathname):
         
     print("Output type:", output_type)
     t = 0
-    for map_number in l_map_numbers:
-
-        map_name = map_number.replace('*','').replace('%','') # remove wildcards
-
-        pathname = os.path.join(output_path, output_file + '_' + map_name + output_ext)
+    # ESRI likes to wrap parameters strings in quotes, for some unknown reason.
+    for mn in l_map_numbers:
+        mapnum = mn.strip("\"'")
+        pathname = os.path.join(output_path, output_file + '_' + mapnum + output_ext)
         print("Output file:", pathname)
-        print("Map number: %s" % map_number)
-        print_map(mxd, map_number, output_type, pathname)
+        print("Map number: %s" % mapnum)
+        print_map(mxd, mapnum, output_type, pathname)
 
         t += 1
         arcpy.SetProgressorPosition(t)
-    sleep(2) # Give ArcMap a chance to catch up with us.
+    sleep(3) # Give ArcMap a chance to catch up with us.
 
     return
 

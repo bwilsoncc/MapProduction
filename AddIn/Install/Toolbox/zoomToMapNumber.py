@@ -22,7 +22,7 @@ CITYNAME  = 2
 ORMAPNUM  = 3
 SHAPE     = 4
 
-cancelledfields = [ "Taxlot", ]
+cancelledfields  = [ "Taxlot", ]
 TAXLOT = 0
 
 pagelayoutfields = [ "MapAngle", ]
@@ -146,6 +146,64 @@ def set_main_definition_queries(mxd, df, orm, mapnumber, mapscale, query):
 
         return
 
+def list_scalebars(mxd):
+    sb = []
+    # make a list of all the scalebar elements in the map.
+    for elem in MAP.ListLayoutElements(mxd, "MAPSURROUND_ELEMENT"):
+        if elem.name.find("Scalebar")>=0:
+            sb.append(elem)
+    return sb
+
+def is_visible(elem, mxd):
+    """ Return TRUE if the element is visible on its page layout. """
+    x = elem.elementPositionX
+    y = elem.elementPositionY
+        
+    minx = -elem.elementWidth
+    miny = -elem.elementHeight
+    maxx = mxd.pageSize.width
+    maxy = mxd.pageSize.height
+    
+    #print(elem.name,(x,y),(minx,miny),(maxx,maxy))
+    
+    return (x > minx and x < maxx) and (y > miny and y <= maxy)
+
+def select_scalebar(mxd, mapscale):
+    
+    sb = list_scalebars(mxd) # all the scalebars in the map
+    sbname = ORMapPageLayout.Scalebars[mapscale] # the one we want
+    visible_sb = selected_sb = None
+    for elem in sb:
+        # Is this scalebar visible?
+        if is_visible(elem, mxd):
+            print("%s is visible." % elem.name)
+            visible_sb = elem
+            
+            if sbname == elem.name:
+            # "elem" is the scalebar we want
+                #aprint("Current scalebar works for me.")
+                # it's on the map, stop
+                return
+        else:
+            if sbname == elem.name:
+                selected_sb = elem
+            
+    if visible_sb:
+        # Move this one off the map
+        visible_sb.elementPositionX = selected_sb.elementPositionX
+        visible_sb.elementPositionY = selected_sb.elementPositionY
+        #aprint("I will hide %s over here (%d,%d)" % (visible_sb.name, visible_sb.elementPositionX, visible_sb.elementPositionY))
+        pass
+    if selected_sb:
+        selected_sb.elementPositionX = ORMapPageLayout.ScalebarXY[0]
+        selected_sb.elementPositionY = ORMapPageLayout.ScalebarXY[1]
+        #aprint("and put %s on the page (%d,%d)" % (selected_sb.name, selected_sb.elementPositionX, selected_sb.elementPositionY))
+    else:
+        eprint("I did not find a good scalebar for this layout.")
+        return
+                
+    return
+
 def update_locator_maps(mxd, orm, mapnumber):
     """ Update the locator maps to emphasize the area of interest.
     You can either create a mask or a highlighter based on queries in the configuration.
@@ -215,6 +273,8 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
     # from a table.
 
     arcpy.SetProgressorLabel("Set up page layout elements")
+    
+    select_scalebar(mxd, s_mapscale)
 
     # Using a table has the advantage of allowing a custom set up for each page.
     table = readtable(mxd, df, ORMapLayers.PAGELAYOUT_TABLE, pagelayoutfields, mapnumber_query)
@@ -455,7 +515,8 @@ def update_page_layout(mxd, mapnumber):
             count += 1
             
     if count != 1:
-        eprint("Query \%s\" matched %d records. FIX THIS, there should only be one." % (mapindex_query, count))
+        eprint("Query \%s\" matched %d records. FIX THIS." % (mapindex_query, count))
+        if count == 0: return
 
     aprint("Read from index file: %s %s %s %s" % (mapindex_mapnumber, mapindex_ormapnum, mapindex_cityname, mapindex_scale))
     mapnumber_query = get_mapnumber_query(mapindex_mapnumber)
@@ -497,6 +558,17 @@ def update_page_layout(mxd, mapnumber):
 
     return
 
+def test_layouts():
+    for mapnumber in ["8.10", "8.10.5.CD", "8.10.5CD D1", "8.10.5CD D2", ]:
+        #mapnumber = "0408.00N10.00W05CD--0000"
+        #mapnumber = "0408.00N10.00W05CD--D001"
+        #mapnumber = "0408.00N10.00W05CD--D002"
+
+        print("mxdname: %s mapnumber: %s" % (mxdname, mapnumber))
+        mxd = MAP.MapDocument(mxdname)
+        update_page_layout(mxd, mapnumber)
+        del mxd    
+
 # ======================================================================
 
 if __name__ == '__main__':
@@ -507,15 +579,10 @@ if __name__ == '__main__':
     except IndexError:
         # Run in the debugger
         mxdname = "TestMap.mxd"
-
-    for mapnumber in ["8.10", "8.10.5.CD", "8.10.5CD D1", "8.10.5CD D2", ]:
-        #mapnumber = "0408.00N10.00W05CD--0000"
-        #mapnumber = "0408.00N10.00W05CD--D001"
-        #mapnumber = "0408.00N10.00W05CD--D002"
-
-        print("mxdname: %s mapnumber: %s" % (mxdname, mapnumber))
-        mxd = MAP.MapDocument(mxdname)
-        update_page_layout(mxd, mapnumber)
-        del mxd    
+    
+    #mxd = MAP.MapDocument(mxdname)
+    #select_scalebar(mxd, 24000)
+    #del mxd
+    test_layouts()
 
 # That's all

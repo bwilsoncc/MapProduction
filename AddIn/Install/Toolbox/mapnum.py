@@ -27,7 +27,7 @@ class mapnum(object):
             if mo.group(7):
                 self.__mapsuffix = mo.group(7)
         except Exception as e:
-            print(e)
+            print("mapnum(%s) %s" % (m,e))
         return
     
     @property

@@ -40,9 +40,11 @@ class ZoomToMapNumber(object):
         try:
             mxd = MAP.MapDocument(self.mxdname)
             df = get_dataframe(mxd, ORMapLayers.MainDF)
+
             layer = get_layer(mxd, df, ORMapLayers.MapIndexLayer[0])
             # Using the datasource instead of the layer avoids problems if there is a definition query.
             map_number.filter.list = list_ormapnumbers(layer.dataSource, ORMapLayers.ORMapNumberField)
+            
             map_number.value = map_number.filter.list[0]
             del mxd
         except Exception as e:

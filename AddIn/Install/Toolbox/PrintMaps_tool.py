@@ -9,7 +9,7 @@ import os
 import arcpy
 from arcpy import mapping as MAP
 import printMaps
-from ormap_utilities import ORMapLayers, get_dataframe, get_layer, list_mapnumbers
+from ormap_utilities import ORMapLayers, get_dataframe, get_layer, list_ormapnumbers
 
 class PrintMaps(object):
     """This class has the methods you need to define
@@ -68,17 +68,20 @@ class PrintMaps(object):
         map_number.filter.type = "ValueList"
         map_number.filter.list = []
 
-        mxd_filepath = ""
         try:
             mxd = MAP.MapDocument(self.mxdname)
-            mxd_filepath = os.path.split(mxd.filePath)[0]
             df = get_dataframe(mxd, ORMapLayers.MainDF)
-            layer = get_layer(mxd, df, ORMapLayers.MAPINDEX_LAYER)
+
+            layer = get_layer(mxd, df, ORMapLayers.MapIndexLayer[0])
             # Using the datasource instead of the layer avoids problems if there is a definition query.
-            map_number.filter.list = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
+            map_number.filter.list = list_ormapnumbers(layer.dataSource, ORMapLayers.ORMapNumberField)
+
+            mxd_filepath = os.path.split(mxd.filePath)[0]
+
             del mxd
         except Exception as e:
             arcpy.AddMessage("%s. \"%s\"" % (e,self.mxdname))
+
                 
         # params[1] is output format
         output_format = arcpy.Parameter(name="output_format",
@@ -131,8 +134,8 @@ class PrintMaps(object):
         
         # Let's dump out what we know here.
         messages.addMessage("Printing maps.")
-        for param in parameters:
-            messages.addMessage("Parameter: %s = %s" % (param.name, param.valueAsText) )
+        #for param in parameters:
+        #    messages.addMessage("Parameter: %s = %s" % (param.name, param.valueAsText) )
         
         # Get the parameters from our parameters list,
         # then call a generic python function.
@@ -175,7 +178,7 @@ if __name__ == "__main__":
     pmo = PrintMaps()
     pmo.mxdname = mxdname # Override "CURRENT" for standalone test
     params = pmo.getParameterInfo()
-    params[0].value = "8.10.25;8.10.7"
+    params[0].value = "8.10.5CD D2;8.10.5CD D1;8.10.5CD"
     params[1].value = "JPEG"
     params[2].value = r"C:\TempPath\test.jpg"
 #    for p in params:

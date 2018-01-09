@@ -47,11 +47,11 @@ URCornerNumY=18.0009
 LRCornerNumX=20.2
 LRCornerNumY=1.3113
 
-ScaleBarXY = (20.6255, 16.8447)
+ScalebarXY = (22.2, 16.7)
 Scalebars = {  240:"Scalebar240",   #   50 ft
                480:"Scalebar240",   #  100 ft
                600:"Scalebar600",   #  100 ft
-               720:"Scalebar600",   #  120 ft
+               720:"Scalebar4800",  #  150 ft
               1200:"Scalebar600",   #  200 ft
               2400:"Scalebar4800",  #  500 ft
               4800:"Scalebar4800",  # 1000 ft

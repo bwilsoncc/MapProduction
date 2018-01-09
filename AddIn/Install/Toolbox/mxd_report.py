@@ -95,12 +95,14 @@ def element(mxd, element_name):
 def report(mxd):
     header(mxd)
     dataframes(mxd)
-    #return
+    element(mxd,"GRAPHIC_ELEMENT")
+    return
     for e in ["TEXT_ELEMENT", 
               "PICTURE_ELEMENT", 
               "GRAPHIC_ELEMENT",
               "MAPSURROUND_ELEMENT",
-              "LEGEND_ELEMENT"]:
+              "LEGEND_ELEMENT",
+              ""]:
         element(mxd,e)
     
 if __name__ == "__main__":
