@@ -8,7 +8,8 @@
 # ---------------------------------------------------------------------------
 from __future__ import print_function
 import arcpy
-import sys
+import sys, os
+from Toolbox.arc_utilities import aprint, eprint
 
 # ========================================================================
 
@@ -21,20 +22,20 @@ def import_features(coverage, fc):
     It does mean the output feature class has to exist. """
 
     if not arcpy.Exists(fc):
-        print("Output feature class must exist. %s" % fc)
-        return
+        eprint("Output feature class must exist. %s" % fc)
+        return False
     
-    print("Importing %s to %s." % (coverage,fc))
+    aprint("Importing %s to %s." % (coverage,fc))
     #arcpy.DeleteFeatures_management(fc)
     #arcpy.Append_management(coverage, fc, "NO_TEST")
 
-    return
+    return True
 
 def import_all(sourcedir, geodatabase):
 
     # First item is coverage name, second is featureclass name
     table_xlat = [
-        ("MapIndex",           "Taxlots\\MapIndex",        "MapScale"),
+        ("MapIndex",           "TaxlotsFD\\MapIndex",      "MapScale"),
 
         ("corner point",       "Corner",                   None),
         ("cartolin arc",       "CartographicLines",        None),
@@ -61,14 +62,15 @@ def import_all(sourcedir, geodatabase):
         print("%d/%d" % (t, maxcount), msg)
         
         destfc = os.path.join(geodatabase, fc)
-        import_features(coverage, destfc)
+        if not import_features(coverage, destfc):
+            return False
         if fieldname:
             # I wonder which feature classes I should really do this for.
-            msg = "Recalculating %s in %s." % (fieldname,fc)
-            print(msg)
-            arcpy.AddMessage(msg)
+            aprint("Recalculating %s in %s." % (fieldname,fc))
             #arcpy.CalculateField_management(destfc, fieldname, "!%s!*12" % fieldname, "PYTHON")
         arcpy.SetProgressorPosition(t)
+
+    return True
 
 # ========================================================================
         
