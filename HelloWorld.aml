@@ -1,0 +1,12 @@
+&args greets destiny:REST
+&type /&/& * HelloWorld.aml *  Usage: &run %aml$file%
+<greeting>
+<destination>
+
+&if [null %greets%] &then
+    &do
+        &setvar greets = Hello
+        &setvar destiny = World
+    &end
+
+&type /& %greets% %destiny% /& 
