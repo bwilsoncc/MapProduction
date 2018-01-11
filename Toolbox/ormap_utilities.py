@@ -20,7 +20,7 @@ import mapnum
 configpath = os.path.dirname(__file__)
 if not configpath: configpath = os.getcwd()
 configpath=configpath.replace("Toolbox","Config")
-print("__file__", __file__, "configpath", configpath)
+#print("__file__", __file__, "configpath", configpath)
 sys.path.append(configpath)
 
 import ORMAP_LayersConfig as ORMapLayers
