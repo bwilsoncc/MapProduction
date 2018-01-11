@@ -9,8 +9,10 @@ import os
 from glob import glob
 from shutil import copyfile, copytree, rmtree
 import sys, subprocess
+import arcpy
 
-schema    = "ORMAP-SchemaN_08-21-08.mdb"
+from coverage_to_geodatabase import import_all
+
 
 # =============================================================================
 
@@ -63,32 +65,33 @@ def run_aml(aml, datafolder, workfolder):
     args = ["c:/arcgis/arcexe9x/bin/arc", "&r " + amlbase]
     
     # Run our AML
-    print("dry run ", amlbase)
-    #p = subprocess.check_output(args)
-    #print("AML %s said:" % amlbase)
-    #print(p)
+    print(amlbase)
+    p = subprocess.check_output(args)
+    print("AML %s said:" % amlbase)
+    print(p)
     
     os.chdir(cwd)
     return
 
-def copy_schema(source, workspace):
-    dest = os.path.join(workspace, schema)
-    if os.path.exists(dest): return
-    
-    source = os.path.join(source, "ORMAP-SchemaN_08-21-08", schema)
-    copyfile(source, dest)
-    print("Copied schema to %s" % workspace)
+def copy_geodatabase(source, geodatabase):
+    if os.path.exists(geodatabase): return
+    copyfile(source, geodatabase)
+    print("Copied empty geodatabase to %s" % geodatabase)
         
 def copy_mxds(sourcedir, workspace):
-    for tool in ["Conversion.mxd","AnnoTemplate.mxd"]:
-        source = os.path.join(sourcedir, tool)
-        dest   = os.path.join(workspace, tool)
+    for s,d in [("ConversionTEMPLATE.mxd","Conversion.mxd"),("AnnoTemplate.mxd","AnnoTemplate.mxd")]:
+        source = os.path.join(sourcedir, s)
+        dest   = os.path.join(workspace, d)
         copyfile(source, dest)
-        repair_mxd(dest)
+        #repair_mxd(dest)
         
 def repair_mxd(mxdname):
+    # I changed the MXD so this should not be necessary 
     # Data sources will still point at the source folder.
     print("%s repaired." % mxdname)
+    m = arcpy.mapping.MapDocument(mxdname)
+    newpath = os.path.join()
+    m.findAndReplaceWorkspacePaths(oldpath,newpath,validate=True)
     pass
                 
 def make_folders(workspace):    
@@ -107,7 +110,8 @@ if __name__ == "__main__":
     datasource = "k:\\taxmaped\\Clatsop\\towned"
     sourcedir = "C:\\GeoModel\\Clatsop"
     outputdir  = sourcedir
-    
+    geodatabase = "ORMAP-SchemaN_08-21-08.mdb"
+
     os.chdir(datasource)
     sources = [ tfolder for tfolder in glob("t[0-9]-*") ]
     
@@ -117,18 +121,35 @@ if __name__ == "__main__":
         
         workspace = os.path.join(outputdir, target)
         make_folders(workspace)
-        copy_schema(sourcedir, workspace)
-        copy_mxds(sourcedir, workspace)
-
-        coverage_source = os.path.join(datasource, source)
+        
+        # Copy a blank geodatabase into our workspace.
+        # (Skipped if the geodabase already exists.)
+        sourcegdb = os.path.join(sourcedir, "ORMAP-SchemaN_08-21-08", geodatabase)
+        gdb       = os.path.join(workspace, geodatabase)
+        copy_geodatabase(sourcegdb, gdb)
+        
+        original_coverages = os.path.join(datasource, source)
+        
         coverage_folder = os.path.join(workspace, "Source")
-        output_folder = os.path.join(workspace, "Workfolder")
+        preprocess_folder = os.path.join(workspace, "Workfolder")
+        
+        # Copy the original coverages into the workspace "Source" folder
         if not os.path.exists(coverage_folder): 
-            copytree(coverage_source, coverage_folder)
+            copytree(original_coverages, coverage_folder)
             print("Copied original coverage data to %s" % coverage_folder)
 
+        # Step 3. Run the preprocess amls to prepare for geodatabase import
+        
         for aml in glob(os.path.join(sourcedir, "ConvertAmls", "[0-9][0-9]-*.aml")):
-            run_aml(aml, coverage_folder, output_folder)
+            run_aml(aml, coverage_folder, preprocess_folder)
 
+        # This will replace any previously imported feature classes;
+        # it does a "delete all" followed by an append.
+        import_all(preprocess_folder, gdb)
+
+        # Copy the supporting MXD's into our workspace
+        copy_mxds(sourcedir, workspace)
+        #import_annotation(preprocess_folder, gdb)
+        
     print("All done!")
 # That's all!
