@@ -10,6 +10,7 @@ from __future__ import print_function
 import os, sys
 import arcpy
 from arcpy import mapping as MAP
+from arc_utilities import aprint, eprint, get_dataframe, get_layer
 from ormapnum import ormapnum
 import mapnum
 
@@ -25,34 +26,6 @@ sys.path.append(configpath)
 import ORMAP_LayersConfig as ORMapLayers
 import ORMAP_MapConfig as ORMapPageLayout
 print(ORMapLayers.__file__, ORMapPageLayout.__file__)
-
-def aprint(msg):
-    """ Print a message. Execution does not stop. """
-    print(msg)
-    sys.stdout.flush()
-    arcpy.AddMessage(msg)
-
-def eprint(msg):
-    """ Print a message. Execution will stop when you use this one. """
-    print("ERROR:",msg)
-    arcpy.AddError(msg)
-
-def get_dataframe(mxd, dfname):
-    """ Return the named dataframe object. """
-    df = None
-    try:
-        df = MAP.ListDataFrames(mxd, dfname)[0]
-    except Exception as e:
-        aprint("Dataframe not found. Make sure it is named '%s'. \"%s\"" % (dfname,e))
-    return df
-
-def get_layer(mxd, df, layername):
-    layer = None
-    try:
-        layer = MAP.ListLayers(mxd, layername, df)[0]
-    except IndexError:
-        print("Can't find layer \"%s\"/\"%s\"." % (df.name, layername))
-    return layer
 
 def set_definition_query(mxd, df, layername, query):
     """ Set the definition query on a layer. """
@@ -99,18 +72,20 @@ if __name__ == "__main__":
     mxdname = "TestMap.mxd"
     
     dfname = ORMapLayers.MainDF
-    layername = ORMapLayers.MAPINDEX_LAYER
+    layername = ORMapLayers.MainLayers[0][0]
     mxd = MAP.MapDocument(mxdname)
     df = get_dataframe(mxd, dfname)
     layer = get_layer(mxd, df, layername)
-    print("layer.dataSource=",layer.dataSource)
     
-    #l = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
-    #for m in l: print(m)
+    aprint("layer.dataSource=%s" % layer.dataSource)
+    
+    aprint("mapnumbers")
+    l = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
+    for m in l: aprint(m)
 
+    aprint("ormapnumbers")
     l = list_ormapnumbers(layer.dataSource, ORMapLayers.ORMapNumberField)
-    for m in l:
-        print(m)
+    for m in l: aprint(m)
 
     del mxd
     
