@@ -8,6 +8,7 @@
 # ---------------------------------------------------------------------------
 from __future__ import print_function
 import arcpy
+import sys
 
 # ========================================================================
 
@@ -20,9 +21,12 @@ def import_features(coverage, fc):
     It does mean the output feature class has to exist. """
 
     if not arcpy.Exists(fc):
-        throw("Output feature class must exist. %s" % fc)
-    arcpy.DeleteFeatures_management(fc)
-    arcpy.Append_management(coverage, fc, "NO_TEST")
+        print("Output feature class must exist. %s" % fc)
+        return
+    
+    print("Importing %s to %s." % (coverage,fc))
+    #arcpy.DeleteFeatures_management(fc)
+    #arcpy.Append_management(coverage, fc, "NO_TEST")
 
     return
 
@@ -49,32 +53,36 @@ def import_all(sourcedir, geodatabase):
     
     arcpy.SetProgressor("step", "Importing %d coverages." % maxcount, start, maxcount, step)
 
+    t = 0
     for coverage,fc,fieldname in table_xlat:
         msg = "Importing %s from %s." % (fc, coverage)
         arcpy.SetProgressorLabel(msg)
         t += 1
         print("%d/%d" % (t, maxcount), msg)
         
-        dest = os.path.join(geodatabase, fc)
-        import_featureclass(coverage, dest)
+        destfc = os.path.join(geodatabase, fc)
+        import_features(coverage, destfc)
         if fieldname:
             # I wonder which feature classes I should really do this for.
-            arcpy.SetProgressorLabel("Recalculating %s in %s." % (fieldname,fc))
-            arcpy.CalculateField_management(dest,
-                                            fieldname,
-                                            "!%s!*12" % fieldname
-                                            "PYTHON", "")
+            msg = "Recalculating %s in %s." % (fieldname,fc)
+            print(msg)
+            arcpy.AddMessage(msg)
+            #arcpy.CalculateField_management(destfc, fieldname, "!%s!*12" % fieldname, "PYTHON")
         arcpy.SetProgressorPosition(t)
 
 # ========================================================================
         
 if __name__ == "__main__":
 
-    # "C:\\GeoModel\\Clatsop\\${TARGET}\\Workfolder"
-    sourcedir = sys.argv[1]
+    try:
+        sourcedir = sys.argv[1]
+    except:
+        sourcedir = "C:\\GeoModel\\Clatsop\\Workfolder"
 
-    # "C:\\GeoModel\\Clatsop\\${TARGET}\\ORMAP-SchemaN_08-21-08.mdb"
-    geodatabase = sys.argv(2)
+    try:
+        geodatabase = sys.argv(2)
+    except:
+        geodatabase = "C:\\GeoModel\\Clatsop\\ORMAP-SchemaN_08-21-08.mdb"
 
     import_all(sourcedir, geodatabase)
 
