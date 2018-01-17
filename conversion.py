@@ -14,10 +14,12 @@ from shutil import copyfile, copytree, rmtree
 import arcpy
 from Toolbox.arc_utilities import aprint, eprint
 from coverage_to_geodatabase import import_all
+import logging
+
+LOGFILE = "conversion.log"
 
 ON_POSIX = 'posix' in sys.builtin_module_names
 q = Queue()
-verbose = False # Show all output of AML scripts.
 
 # =============================================================================
 
@@ -33,17 +35,18 @@ def run_aml(amlsource, coverage_folder, preprocess_folder):
     """ Run an AML file; but before running it, 
         put the correct strings into the AMLs to describe source and output locations.
     
-        Use full paths for everything. Arc finds relative paths confusing.
-        The &WORKSPACE command does a CHDIR and therefore Arc forgets what the current folder is.
-        I think this is what happens when ESRI has talented high school students write their code.
+        Use full paths for everything; arc finds relative paths confusing. This is because
+        the &WORKSPACE command does a CHDIR and therefore Arc forgets what the current folder is.
         Anyway. Use full paths for all parameters.
         
-        amlsource is the path to a file containing AML code
-        coverage_folder is the location of the source coverage data
-        preprocess_folder is location where the coverages will be written
+        "amlsource" is the path to a file containing AML code
+        "coverage_folder" is the location of the source coverage data
+        "preprocess_folder" is location where the coverages will be written
         
         AML files and WATCH files will be written into the preprocess_folder
     """ 
+
+    verbose = False # Show all output of AML scripts.
 
     with open(amlsource,"r") as fp:
         lines = fp.readlines()
@@ -87,8 +90,9 @@ def run_aml(amlsource, coverage_folder, preprocess_folder):
     
     # Run our AML
     ok = True
-    aprint("Running %s" % amltmp)
 
+    print(amltmp)
+    
     # Start "arc" running as a child process and grab its stdout.
     p = subprocess.Popen(args, stdout=subprocess.PIPE, bufsize=1, close_fds=ON_POSIX)
 
@@ -113,21 +117,24 @@ def run_aml(amlsource, coverage_folder, preprocess_folder):
                 #print("Return code from Arc was", retcode)
                 countdown=0
             else:
-                if countdown < 5: print(countdown)
-                sleep(.5)
+                if countdown < 10: print(countdown)
+                sleep(1)
                 countdown -= 1
         else:
             countdown = restart # Keep going
             if verbose: print(line.strip())
             if line.find("AML MESSAGE")>=0:
+                logging.warning(line.strip())
                 if not verbose: print(line.strip())
                 if line.find("Stopping execution")>=0:
                     print("Stopping execution of %s on %s" % (amltmp, preprocess_folder))
-                    countdown = 2 # stop soonish
+                    countdown = 10 # give it another 10 seconds
                 
     if retcode == None:
         # Still running
-        print("Terminating process %d and its children." % p.pid)
+        msg = "Terminating process %d and its children." % p.pid
+        logging.error(amltmp + ":" + msg)
+        print(msg)
         # Can't do simple terminate because "arc" starts subprocesses like "arcedit".
         # /T option causes child processes to be taken down too.
         # /F means "force".
@@ -136,9 +143,39 @@ def run_aml(amlsource, coverage_folder, preprocess_folder):
 
     return ok
 
+def copy_coverages(datasource, source, coverage_folder):
+    """ Copy the original coverages into our workspace "Source" folder. 
+        Will not overwrite coverage_folder. """
+    original_coverages = os.path.join(datasource, source)
+    if not os.path.exists(coverage_folder): 
+        copytree(original_coverages, coverage_folder)
+        aprint("Copied original coverage data to %s" % coverage_folder)
+    return
+
+def preprocess(amlsource_folder, preprocess_folder, coverage_folder):
+    """ Step 3. Run the preprocess amls to prepare for geodatabase import. 
+    Run all AML scripts, and return False if any of them failed to complete. """
+
+    rval = True # Assume all is well in the world
+    
+    # Clear out the remnants of any previous conversion
+    rmtree(preprocess_folder, ignore_errors=True)
+    if not os.path.exists(preprocess_folder): os.mkdir(preprocess_folder)
+    os.chdir(preprocess_folder)
+
+    # We run 01-14 because #15 is BROKEN -- read the docs!
+            
+    for amlnumber in range(1,15):
+        amlfile = glob(os.path.join(amlsource_folder, "%02d-*.aml" % amlnumber))[0]
+        #print(amlfile, coverage_folder, preprocess_folder)
+        ok = run_aml(amlfile, coverage_folder, preprocess_folder)
+        if not ok: rval = False 
+    
+    return rval
+
 def copy_geodatabase(source, geodatabase):
     if os.path.exists(geodatabase): return
-    #copyfile(source, geodatabase)
+    copyfile(source, geodatabase)
     print("Copied empty geodatabase to %s" % geodatabase)
         
 def copy_mxds(sourcedir, workspace):
@@ -160,6 +197,8 @@ def repair_mxd(mxdname):
 # =============================================================================
 if __name__ == "__main__":
 
+    logging.basicConfig(filename=LOGFILE,level=logging.DEBUG)
+
     #datasource  = "k:\\taxmaped\\Clatsop\\towned"
     datasource  = "c:\\taxmaped_BACKUPS"
     sourcedir   = "C:\\GeoModel\\Clatsop"
@@ -170,67 +209,48 @@ if __name__ == "__main__":
     sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t[4-9]-*"))]
     
     # Uncomment to select one township for testing
-    sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t4-10"))]
+    #sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t4-10"))]
 
-    # If this is set to True then existing coverages will be removed and rebuilt
+    # If this is set to True then existing "preprocess" coverages will be removed and rebuilt
     overwrite = True
+    #overwrite = False
     
     ok = True
 
     for sourcefullpath in sources:
         sourcepath, source = os.path.split(sourcefullpath)
-        target = "T%sN%sW" % (source[1], source[3:])
 
         preprocess_folder  = os.path.join(workspace, "Workfolder", source)
 
-        # Dont overwrite, press forward
+        msg = "Creating %s" % source
         if os.path.exists(preprocess_folder):
             if overwrite:
-                aprint("Overwriting %s" % source)
+                msg = "Overwriting %s" % source
             else:
-                aprint("Skipping %s" % source)
+                msg = "Skipping %s" % source
                 continue
-        else:
-            aprint("Creating %s" % source)
-        
-        # Copy a blank geodatabase into our workspace.
-        # (Skipped if the geodabase already exists.)
-        sourcegdb = os.path.join(sourcedir, "ORMAP-SchemaN_08-21-08", geodatabase)
-        gdb       = os.path.join(workspace, geodatabase)
-        copy_geodatabase(sourcegdb, gdb)
-        
-        # Copy the original coverages into the workspace "Source" folder
+            
+        logging.info(msg)
+        aprint(msg)
 
-        original_coverages = os.path.join(datasource, source)
-        coverage_folder    = os.path.join(workspace, "Source", source)
-               
-        if not os.path.exists(coverage_folder): 
-            copytree(original_coverages, coverage_folder)
-            aprint("Copied original coverage data to %s" % coverage_folder)
-
-        # Step 3. Run the preprocess amls to prepare for geodatabase import
+        coverage_folder = os.path.join(workspace, "Source", source)
+        copy_coverages(datasource, source, coverage_folder)
 
         saved = os.getcwd()
 
-        # Clear out the remnants of any previous conversion
-        rmtree(preprocess_folder, ignore_errors=True)
-        if not os.path.exists(preprocess_folder): os.mkdir(preprocess_folder)
-        os.chdir(preprocess_folder)
-
-        # We run 01-14 because #15 is BROKEN -- read the docs!
-        
-        for amlnumber in range(1,15):
-            amlfile = glob(os.path.join(sourcedir, "ConvertAmls", "%02d-*.aml" % amlnumber))[0]
-            #print(amlfile, coverage_folder, preprocess_folder)
-            ok = run_aml(amlfile, coverage_folder, preprocess_folder)
-            if not ok: 
-                print("Pressing on after catching an error.")
-            pass
+        amlsource = os.path.join(sourcedir, "ConvertAmls")
+        ok = preprocess(amlsource, preprocess_folder, coverage_folder)     
         #if not ok: break
     
+        # Copy a blank geodatabase into our workspace.
+        # (Skipped if the geodabase already exists.)
+        sourcegdb = os.path.join(sourcedir, "ORMAP-SchemaN_08-21-08", geodatabase)
+        gdb       = os.path.join(preprocess_folder, geodatabase)
+        copy_geodatabase(sourcegdb, gdb)
+
         # This will replace any previously imported feature classes;
         # it does a "delete all" followed by an append.
-        #import_all(preprocess_folder, gdb)
+        import_all(preprocess_folder, gdb)
 
         # Copy the supporting MXD's into our workspace
         #copy_mxds(sourcedir, workspace)
@@ -241,5 +261,5 @@ if __name__ == "__main__":
     if ok: 
         print("All done!")
     else:
-        print("We finished with errors!") 
+        print("We finished with errors!")
 # That's all!
