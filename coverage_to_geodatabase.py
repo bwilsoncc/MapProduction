@@ -21,31 +21,36 @@ def import_features(coverage, fc):
     I think this is done to keep the new schema?
     It does mean the output feature class has to exist. """
 
+    if not arcpy.Exists(coverage):
+        eprint("Input coverage must exist. %s" % coverage)
+        return False
+    
     if not arcpy.Exists(fc):
         eprint("Output feature class must exist. %s" % fc)
         return False
     
     aprint("Importing %s to %s." % (coverage,fc))
-    #arcpy.DeleteFeatures_management(fc)
-    #arcpy.Append_management(coverage, fc, "NO_TEST")
+    arcpy.DeleteFeatures_management(fc)
+    arcpy.Append_management(coverage, fc, "NO_TEST")
 
     return True
 
-def import_all(sourcedir, geodatabase):
+def import_all(source_folder, geodatabase):
 
     # First item is coverage name, second is featureclass name
     table_xlat = [
-        ("MapIndex",           "TaxlotsFD\\MapIndex",      "MapScale"),
+        ("mapindex\\polygon", "TaxlotsFD\\MapIndex",      "MapScale"),
 
-        ("corner point",       "Corner",                   None),
-        ("cartolin arc",       "CartographicLines",        None),
-        ("taxcode arc",        "TaxlotsFD\\TaxCodeLines",  None),
-        ("taxcode polygon",    "TaxlotsFD\TaxCode",        None),
-        ("plssline arc",       "PLSSLines",                None),
-        ("refline arc",        "ReferenceLines",           None),
-        ("waterlin arc",       "Waterlines",               None),
-        ("taxlot arc",         "TaxlotsFD\\TaxlotLines",   None),
-        ("taxlot polygon",     "TaxlotsFD\\Taxlot",        None),
+        ("cartolin\\arc",     "CartographicLines",        None),
+        ("corner\\point",     "Corner",                   None),
+        ("plssline\\arc",     "PLSSLines",                None),
+        ("refline\\arc",      "ReferenceLines",           None),
+        ("taxcode\\arc",      "TaxlotsFD\\TaxCodeLines",  None),
+        ("taxcode\\polygon",  "TaxlotsFD\TaxCode",        None),
+        ("taxlot\\arc",       "TaxlotsFD\\TaxlotLines",   None),
+        ("taxlot\\polygon",   "TaxlotsFD\\Taxlot",        None),
+        ("waterlin\\arc",     "Waterlines",               None),
+        ("water\\polygon",    "Water",                    None),
     ]
 
     start    = 0
@@ -56,18 +61,19 @@ def import_all(sourcedir, geodatabase):
 
     t = 0
     for coverage,fc,fieldname in table_xlat:
-        msg = "Importing %s from %s." % (fc, coverage)
+        msg = "Importing %s to %s." % (coverage, fc)
         arcpy.SetProgressorLabel(msg)
         t += 1
-        print("%d/%d" % (t, maxcount), msg)
-        
+        #print("%d/%d" % (t, maxcount), msg)
+
+        srccvg = os.path.join(source_folder, coverage)        
         destfc = os.path.join(geodatabase, fc)
-        if not import_features(coverage, destfc):
+        if not import_features(srccvg, destfc):
             return False
         if fieldname:
             # I wonder which feature classes I should really do this for.
             aprint("Recalculating %s in %s." % (fieldname,fc))
-            #arcpy.CalculateField_management(destfc, fieldname, "!%s!*12" % fieldname, "PYTHON")
+            arcpy.CalculateField_management(destfc, fieldname, "!%s!*12" % fieldname, "PYTHON")
         arcpy.SetProgressorPosition(t)
 
     return True
@@ -87,5 +93,7 @@ if __name__ == "__main__":
         geodatabase = "C:\\GeoModel\\Clatsop\\ORMAP-SchemaN_08-21-08.mdb"
 
     import_all(sourcedir, geodatabase)
+    
+    print("Tests completed.")
 
 # That's all!
