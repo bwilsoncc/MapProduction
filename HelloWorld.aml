@@ -1,12 +1,5 @@
-&args greets destiny:REST
-&type /&/& * HelloWorld.aml *  Usage: &run %aml$file%
-<greeting>
-<destination>
+&type Hello, world.
+&type What is Man that though
+&type shouldst test him
+&type every moment?
 
-&if [null %greets%] &then
-    &do
-        &setvar greets = Hello
-        &setvar destiny = World
-    &end
-
-&type /& %greets% %destiny% /& 
