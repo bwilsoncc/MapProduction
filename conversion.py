@@ -13,6 +13,7 @@ from glob import glob
 from shutil import copyfile, copytree, rmtree
 import arcpy
 from Toolbox.arc_utilities import aprint, eprint
+from update_acres import update_acres
 from coverage_to_geodatabase import import_all
 import logging
 
@@ -94,7 +95,7 @@ def run_aml(amlsource, coverage_folder, preprocess_folder):
     print(amltmp)
     
     # Start "arc" running as a child process and grab its stdout.
-    p = subprocess.Popen(args, stdout=subprocess.PIPE, bufsize=1, close_fds=ON_POSIX)
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, close_fds=ON_POSIX)
 
     # Create a thread and connect the output from "arc" to it
     t = Thread(target=enqueue_output, args=(p.stdout,q))
@@ -124,11 +125,20 @@ def run_aml(amlsource, coverage_folder, preprocess_folder):
             countdown = restart # Keep going
             if verbose: print(line.strip())
             if line.find("AML MESSAGE")>=0:
-                logging.warning(line.strip())
-                if not verbose: print(line.strip())
                 if line.find("Stopping execution")>=0:
-                    print("Stopping execution of %s on %s" % (amltmp, preprocess_folder))
+                    msg = "%s:Stopping execution on %s" % (amltmp, preprocess_folder)
+                    logging.warning(msg)
+                    print(msg)
                     countdown = 10 # give it another 10 seconds
+                else:
+                    logging.warning(amltmp + ":" + line.strip())
+                    if not verbose: print(line.strip())
+            elif line.find("DO YOU WANT TO TRY AGAIN?")>=0:
+                logging.warning(amltmp + ":" + line.strip())
+                msg = "%s:INPUT PROMPT. %s" % (amltmp, preprocess_folder)
+                logging.warning(msg)
+                print(msg)
+                countdown = 5 # give it another second
                 
     if retcode == None:
         # Still running
@@ -171,6 +181,9 @@ def preprocess(amlsource_folder, preprocess_folder, coverage_folder):
         ok = run_aml(amlfile, coverage_folder, preprocess_folder)
         if not ok: rval = False 
     
+    count = update_acres(os.path.join("taxacan", "annotation.igds"))
+    logging.info("TAXACRES updated in %d rows" % count)
+
     return rval
 
 def copy_geodatabase(source, geodatabase):
@@ -209,11 +222,11 @@ if __name__ == "__main__":
     sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t[4-9]-*"))]
     
     # Uncomment to select one township for testing
-    #sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t4-10"))]
+    #sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t4-7"))]
 
     # If this is set to True then existing "preprocess" coverages will be removed and rebuilt
     overwrite = True
-    #overwrite = False
+    overwrite = False
     
     ok = True
 
@@ -240,7 +253,8 @@ if __name__ == "__main__":
 
         amlsource = os.path.join(sourcedir, "ConvertAmls")
         ok = preprocess(amlsource, preprocess_folder, coverage_folder)     
-        #if not ok: break
+        if not ok: 
+            logging.warn("Preprocessing completed with errors.")
     
         # Copy a blank geodatabase into our workspace.
         # (Skipped if the geodabase already exists.)
@@ -250,7 +264,7 @@ if __name__ == "__main__":
 
         # This will replace any previously imported feature classes;
         # it does a "delete all" followed by an append.
-        import_all(preprocess_folder, gdb)
+        #import_all(preprocess_folder, gdb)
 
         # Copy the supporting MXD's into our workspace
         #copy_mxds(sourcedir, workspace)

@@ -9,6 +9,7 @@
 from __future__ import print_function
 import arcpy
 import sys, os
+import logging
 from Toolbox.arc_utilities import aprint, eprint
 
 # ========================================================================
@@ -30,9 +31,12 @@ def import_features(coverage, fc):
         return False
     
     aprint("Importing %s to %s." % (coverage,fc))
-    arcpy.DeleteFeatures_management(fc)
-    arcpy.Append_management(coverage, fc, "NO_TEST")
-
+    try:
+        arcpy.DeleteFeatures_management(fc)
+        arcpy.Append_management(coverage, fc, "NO_TEST")
+    except Exception as e:
+        logging.error("import_features(%s,%s):%s" % (coverage,fc, e))
+        
     return True
 
 def import_all(source_folder, geodatabase):
@@ -69,11 +73,13 @@ def import_all(source_folder, geodatabase):
         srccvg = os.path.join(source_folder, coverage)        
         destfc = os.path.join(geodatabase, fc)
         if not import_features(srccvg, destfc):
-            return False
+            continue
+        
         if fieldname:
             # I wonder which feature classes I should really do this for.
             aprint("Recalculating %s in %s." % (fieldname,fc))
             arcpy.CalculateField_management(destfc, fieldname, "!%s!*12" % fieldname, "PYTHON")
+        
         arcpy.SetProgressorPosition(t)
 
     return True
