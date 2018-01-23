@@ -5,17 +5,17 @@ Set up all townships for conversion.
 @author: bwilson
 """
 from __future__ import print_function
-import os, sys, subprocess
+import os, sys, subprocess, logging
 from threading import Thread
 from Queue import Queue, Empty
 from time import sleep
 from glob import glob
 from shutil import copyfile, copytree, rmtree
 import arcpy
+from arcpy import mapping as MAP
 from Toolbox.arc_utilities import aprint, eprint
 from update_acres import update_acres
-from coverage_to_geodatabase import import_all
-import logging
+from coverage_to_geodatabase import import_all_features, convert_anno
 
 LOGFILE = "conversion.log"
 
@@ -187,26 +187,95 @@ def preprocess(amlsource_folder, preprocess_folder, coverage_folder):
     return rval
 
 def copy_geodatabase(source, geodatabase):
-    if os.path.exists(geodatabase): return
     copyfile(source, geodatabase)
     print("Copied empty geodatabase to %s" % geodatabase)
         
-def copy_mxds(sourcedir, workspace):
-    for s,d in [("ConversionTEMPLATE.mxd","Conversion.mxd"),("AnnoTemplate.mxd","AnnoTemplate.mxd")]:
-        source = os.path.join(sourcedir, s)
-        dest   = os.path.join(workspace, d)
-        copyfile(source, dest)
-        #repair_mxd(dest)
+def repair_layer(lyr, oldp, newp):
+    # Show ONLY layers with a query.
+    #if not(lyr.supports("DEFINITIONQUERY") and lyr.definitionQuery): return
+
+    rcount = 0
         
-def repair_mxd(mxdname):
-    # I changed the MXD so this should not be necessary 
-    # Data sources will still point at the source folder.
-    print("%s repaired." % mxdname)
-    m = arcpy.mapping.MapDocument(mxdname)
-    newpath = os.path.join()
-    m.findAndReplaceWorkspacePaths(oldpath,newpath,validate=True)
+    if lyr.supports("DATASOURCE"):
+
+        ds = os.path.normcase(lyr.dataSource)
+        op = os.path.normcase(oldp)
+        #np = os.path.normcase(newp)        
+        #print("          %s" % lyr.dataSource)
+        #print("    old   %s" % oldp)
+        #print("    new?  %s" % newp)
+        if ds.find(op)==0:
+            #print("   Layer: %s" % lyr.longName)
+            dataset = ds[len(op)+1:]
+            if dataset.find(".mdb")>0:
+                return 0
+            #print("***       %s  %s" % (newp, dataset))
+            try:
+                lyr.findAndReplaceWorkspacePath(oldp, newp, validate=False)
+                #print("   Set to %s" % lyr.dataSource)
+                rcount = 1
+            except ValueError:
+                eprint("repair_layer(%s,%s,%s) Replace failed." % (lyr.longName, oldp, newp))
+        #print()
+        
+    return rcount
+        
+def repair_mxd(mxdname, sourcedir, workfolder, target):
+    
+    #print("----------------------------------------")
+    #print(mxdname)
+    m = arcpy.mapping.MapDocument(mxdname) 
+    mdb = "ORMAP-SchemaN_08-21-08.mdb"
+    count = 0
+    l_df = MAP.ListDataFrames(m)
+    for df in l_df:
+        for lyr in MAP.ListLayers(m, "", df):
+            oldpath = os.path.join(sourcedir, mdb)
+            newpath = os.path.join(workfolder, target, mdb)
+            r = repair_layer(lyr, oldpath, newpath)
+            if r:
+                count += r
+                continue
+
+            # Just hacking around confusing ESRI path
+            # Where this comes from is a mystery
+            # "C:\GeoModel\Clatsop\Workfolder\t4-10\Workfolder"            
+            oldpath = os.path.join(workfolder, target, "Workfolder")
+            newpath = os.path.join(workfolder, target)
+            r = repair_layer(lyr, oldpath, newpath)
+            if r:
+                count += r
+                continue
+
+            oldpath = workfolder
+            r = repair_layer(lyr, oldpath, newpath)
+            if r:
+                count += r
+                continue
+
+    if count>0:
+        print("Repaired %d layers." % count)
+        m.save()
+    else:
+        print("Nothing to repair.")
+    print()
+    
+    del m
+    
     pass
             
+def install_mxds(sourcedir, workfolder, target):
+    for s,d in [
+                ("ConversionTEMPLATE.mxd","Conversion.mxd"),
+                ("AnnoTEMPLATE.mxd","Annotation.mxd")
+                ]:
+        source = os.path.join(sourcedir, s)
+        dest   = os.path.join(workfolder, target, d)
+        if not os.path.exists(dest):
+            print(source, " ==>", dest)
+            copyfile(source, dest)
+            repair_mxd(dest, sourcedir, workfolder, target)
+
 # =============================================================================
 if __name__ == "__main__":
 
@@ -222,11 +291,14 @@ if __name__ == "__main__":
     sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t[4-9]-*"))]
     
     # Uncomment to select one township for testing
-    #sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t4-7"))]
+    sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t4-10"))]
 
     # If this is set to True then existing "preprocess" coverages will be removed and rebuilt
     overwrite = True
     overwrite = False
+    
+    overwrite_anno = True        
+    overwrite_anno = False
     
     ok = True
 
@@ -235,40 +307,52 @@ if __name__ == "__main__":
 
         preprocess_folder  = os.path.join(workspace, "Workfolder", source)
 
-        msg = "Creating %s" % source
+        msg = "Preprocessing %s" % source
+        do_preprocess = True
         if os.path.exists(preprocess_folder):
             if overwrite:
                 msg = "Overwriting %s" % source
             else:
-                msg = "Skipping %s" % source
-                continue
-            
+                msg = "Skipping preprocessing on %s; folder exists." % source
+                do_preprocess = False
+        
         logging.info(msg)
         aprint(msg)
-
-        coverage_folder = os.path.join(workspace, "Source", source)
-        copy_coverages(datasource, source, coverage_folder)
-
         saved = os.getcwd()
+        
+        if do_preprocess:
 
-        amlsource = os.path.join(sourcedir, "ConvertAmls")
-        ok = preprocess(amlsource, preprocess_folder, coverage_folder)     
-        if not ok: 
-            logging.warn("Preprocessing completed with errors.")
+            coverage_folder = os.path.join(workspace, "Source", source)
+            copy_coverages(datasource, source, coverage_folder)
+
+            
+            amlsource = os.path.join(sourcedir, "ConvertAmls")
+            ok = preprocess(amlsource, preprocess_folder, coverage_folder)     
+            if not ok: 
+                logging.warn("Preprocessing completed with errors.")
     
         # Copy a blank geodatabase into our workspace.
-        # (Skipped if the geodabase already exists.)
         sourcegdb = os.path.join(sourcedir, "ORMAP-SchemaN_08-21-08", geodatabase)
         gdb       = os.path.join(preprocess_folder, geodatabase)
-        copy_geodatabase(sourcegdb, gdb)
-
-        # This will replace any previously imported feature classes;
-        # it does a "delete all" followed by an append.
-        #import_all(preprocess_folder, gdb)
+        if os.path.exists(gdb):
+            msg = "Skipping geodatabase conversion; ORMAP gdb exists."
+            logging.info(msg)
+            aprint(msg)
+        else:       
+            copy_geodatabase(sourcegdb, gdb)
+            # This will replace any previously imported feature classes;
+            # it does a "delete all" followed by an append.
+            import_all_features(preprocess_folder, gdb)
 
         # Copy the supporting MXD's into our workspace
-        #copy_mxds(sourcedir, workspace)
-        #import_annotation(preprocess_folder, gdb)
+        install_mxds(sourcedir, os.path.join(workspace, "Workfolder"), source)
+        
+        logging.info("Convert annotation %s" % source)
+        reference_scale = "1200"
+        mxdname = os.path.join(preprocess_folder, "Annotation.mxd")
+        mxd = MAP.MapDocument(mxdname)
+        convert_anno(mxd, gdb, reference_scale, overwrite_anno)
+        del mxd # release schema locks
         
         os.chdir(saved)
 
