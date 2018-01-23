@@ -5,7 +5,7 @@
 #
 from __future__ import print_function
 import sys
-from arcpy import AddMessage, AddError
+from arcpy import AddMessage, AddError, Exists, Delete_management
 from arcpy import mapping as MAP
 
 def aprint(msg):		
@@ -17,7 +17,16 @@ def aprint(msg):
 def eprint(msg):		
     """ Print a message. Execution will stop when you use this one. """		
     print("ERROR:",msg)		
-    AddError(msg)		
+    AddError(msg)	
+
+def deletefc(fc):
+    """ Delete a feature class if it exists. """
+    msg = "Feature class '%s'" % fc
+    if Exists(fc):
+        Delete_management(fc)
+        msg += " deleted."
+    aprint(msg)
+    return	
 		
 def get_dataframe(mxd, dfname):		
     """ Return the named dataframe object. """		
