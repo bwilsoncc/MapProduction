@@ -17,7 +17,9 @@ def header(mxd):
 
 def layer(lyr):
     # Show ONLY layers with a query.
-    if not(lyr.supports("DEFINITIONQUERY") and lyr.definitionQuery): return
+    #if not(lyr.supports("DEFINITIONQUERY") and lyr.definitionQuery): return
+
+    rcount = 0
 
     space = True
     msg = "\t"
@@ -36,26 +38,49 @@ def layer(lyr):
     print(msg+"Layer: %s" % lyr.longName)
 
     if lyr.supports("DATASOURCE"):
+
+       
+        # A hack to repair the anno template
+        oldp = "C:\\GeoModel\\Clatsop\\convertii"
+        newp = "C:\\GeoModel\\Clatsop\\Workfolder"
+        if lyr.dataSource.find(oldp)==0:
+            try:
+                lyr.findAndReplaceWorkspacePath(oldp, newp, validate=False)
+                print("\t Source has been set to %s" % lyr.dataSource)
+                rcount = 1
+            except ValueError:
+                print("Replace failed, %s => %s" % (oldp, newp))
+            
         print("\t%s" % lyr.dataSource)
+        
     if lyr.supports("SHOWLABELS"): 
             print("\tShow labels: ON")
     
-    if not lyr.visible: print("\tVisible: NO")
+    if not lyr.visible: 
+        #print("\tVisible: NO")
+        pass
     
     if lyr.supports("DEFINITIONQUERY") and lyr.definitionQuery:
-        print("\tQuery: %s" % lyr.definitionQuery)
+        #print("\tQuery: %s" % lyr.definitionQuery)
+        pass
         
     if space: print()
     
+    return rcount
+
+    
 def layers(mxd, df):
     print("    Layers:")
+    rcount = 0
     for lyr in MAP.ListLayers(mxd, "", df):
-        layer(lyr)
+        rcount += layer(lyr)
     print()
+    return rcount
     
 def dataframes(mxd):
     # Use the list of data frames so report order will be correct.
     l_df = MAP.ListDataFrames(mxd)
+    rcount = 0
     print(" DATA FRAMES:")
     for df in l_df:
         elm = MAP.ListLayoutElements(mxd, wildcard=df.name)[0]
@@ -66,7 +91,8 @@ def dataframes(mxd):
         print("    Width:               " + str(elm.elementWidth))
         print()
         
-        layers(mxd, df)
+        rcount += layers(mxd, df)
+    return rcount
     
 def element(mxd, element_name):
     l_elm = MAP.ListLayoutElements(mxd, element_name)
@@ -93,10 +119,11 @@ def element(mxd, element_name):
         print()
 
 def report(mxd):
+    rcount = 0
     header(mxd)
-    dataframes(mxd)
+    rcount = dataframes(mxd)
     element(mxd,"GRAPHIC_ELEMENT")
-    return
+    #return rcount
     for e in ["TEXT_ELEMENT", 
               "PICTURE_ELEMENT", 
               "GRAPHIC_ELEMENT",
@@ -104,12 +131,18 @@ def report(mxd):
               "LEGEND_ELEMENT",
               ""]:
         element(mxd,e)
-    
+    return rcount
+
 if __name__ == "__main__":
 
     mxdname = "TestMap.mxd"
+    mxdname = "C:/GeoModel/Clatsop/AnnoTemplate.mxd"
     mxd = MAP.MapDocument(mxdname)
-    report(mxd)
+    rcount = report(mxd)
+    if rcount>0:
+        print("MXD has been modified.")
+        #mxd.save()
+        pass
     del mxd
     
 # That's a;;!
