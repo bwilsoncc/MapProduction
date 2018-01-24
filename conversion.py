@@ -298,7 +298,7 @@ if __name__ == "__main__":
     overwrite = False
     
     overwrite_anno = True        
-    overwrite_anno = False
+    #overwrite_anno = False
     
     ok = True
 

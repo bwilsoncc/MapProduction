@@ -7,6 +7,7 @@ Borrowed from the ESRI "ElementReport.py" script.
 @author: bwilson
 """
 from __future__ import print_function
+import arcpy
 from arcpy import mapping as MAP
 from datetime import datetime
 
@@ -15,41 +16,49 @@ def header(mxd):
     print(mxd.filePath)
     print()
 
-def layer(lyr):
+def show_layer(lyr):
     # Show ONLY layers with a query.
     #if not(lyr.supports("DEFINITIONQUERY") and lyr.definitionQuery): return
 
     rcount = 0
 
     space = True
+    isfeature = False
+    isgroup   = False
+    
     msg = "\t"
     if lyr.isBroken:
         msg += "BROKEN "
     if lyr.isGroupLayer:
         msg += "Group "
+        isgroup = True
     elif lyr.isBasemapLayer:
         msg += "Basemap "
     elif lyr.isFeatureLayer:
         msg += "Feature "
+        isfeature = True
     else:
         msg += "    "
         space = False
+        
+    islabel = False # Is this a word? :-)
+    if lyr.supports("LABELCLASSEs"): islabel = True
+
         
     print(msg+"Layer: %s" % lyr.longName)
 
     if lyr.supports("DATASOURCE"):
 
-       
-        # A hack to repair the anno template
-        oldp = "C:\\GeoModel\\Clatsop\\convertii"
-        newp = "C:\\GeoModel\\Clatsop\\Workfolder"
-        if lyr.dataSource.find(oldp)==0:
-            try:
-                lyr.findAndReplaceWorkspacePath(oldp, newp, validate=False)
-                print("\t Source has been set to %s" % lyr.dataSource)
-                rcount = 1
-            except ValueError:
-                print("Replace failed, %s => %s" % (oldp, newp))
+#        # A hack to repair the anno template
+#        oldp = "C:\\GeoModel\\Clatsop\\convertii"
+#        newp = "C:\\GeoModel\\Clatsop\\Workfolder"
+#        if lyr.dataSource.find(oldp)==0:
+#            try:
+#                lyr.findAndReplaceWorkspacePath(oldp, newp, validate=False)
+#                print("\t Source has been set to %s" % lyr.dataSource)
+#                rcount = 1
+#            except ValueError:
+#                print("Replace failed, %s => %s" % (oldp, newp))
             
         print("\t%s" % lyr.dataSource)
         
@@ -68,16 +77,15 @@ def layer(lyr):
     
     return rcount
 
-    
-def layers(mxd, df):
+def show_layers(mxd, df):
     print("    Layers:")
     rcount = 0
     for lyr in MAP.ListLayers(mxd, "", df):
-        rcount += layer(lyr)
+        rcount += show_layer(lyr)
     print()
     return rcount
     
-def dataframes(mxd):
+def show_dataframes(mxd):
     # Use the list of data frames so report order will be correct.
     l_df = MAP.ListDataFrames(mxd)
     rcount = 0
@@ -91,10 +99,11 @@ def dataframes(mxd):
         print("    Width:               " + str(elm.elementWidth))
         print()
         
-        rcount += layers(mxd, df)
+        rcount += show_layers(mxd, df)
     return rcount
     
-def element(mxd, element_name):
+def show_layout_element(mxd, element_name):
+    
     l_elm = MAP.ListLayoutElements(mxd, element_name)
     if len(l_elm) > 0:
         print(" %s:" % element_name.replace('_',' '))
@@ -121,24 +130,32 @@ def element(mxd, element_name):
 def report(mxd):
     rcount = 0
     header(mxd)
-    rcount = dataframes(mxd)
-    element(mxd,"GRAPHIC_ELEMENT")
-    #return rcount
+
+    rcount = show_dataframes(mxd)
+    return
     for e in ["TEXT_ELEMENT", 
               "PICTURE_ELEMENT", 
               "GRAPHIC_ELEMENT",
               "MAPSURROUND_ELEMENT",
               "LEGEND_ELEMENT",
               ""]:
-        element(mxd,e)
+        show_layout_element(mxd,e)
     return rcount
 
 if __name__ == "__main__":
 
+    gdb = "C:/GeoModel/Clatsop/ORMAP-SchemaN_08-21-08/ORMAP-SchemaN_08-21-08.mdb/TaxlotsFD"
+    arcpy.env.workspace = gdb
+    for anno in arcpy.ListFeatureClasses("", "ANNOTATION"):
+        print(anno)
+    pass
+
     mxdname = "TestMap.mxd"
-    mxdname = "C:/GeoModel/Clatsop/AnnoTemplate.mxd"
+    #mxdname = "C:/GeoModel/Clatsop/AnnoTemplate.mxd"
+ 
     mxd = MAP.MapDocument(mxdname)
     rcount = report(mxd)
+
     if rcount>0:
         print("MXD has been modified.")
         #mxd.save()

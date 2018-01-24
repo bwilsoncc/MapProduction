@@ -35,15 +35,14 @@ def import_features(coverage, fc):
         return False
     
     try:
-        temp = "annofeatureslayer"
-        arcpy.MakeFeatureLayer_management(fc, temp)
-        arcpy.SelectLayerByAttribute_management(temp, "NEW_SELECTION")
-        featcount = int(arcpy.GetCount_management(temp).getOutput(0)) 
-        if featcount > 0:
-            arcpy.DeleteFeatures_management(temp)
+        arcpy.DeleteFeatures_management(fc)
+    except Exception as e:
+        logging.error("import_features(%s,%s) DeleteFeatures :%s" % (coverage,fc, e))
+
+    try:
         arcpy.Append_management(coverage, fc, "NO_TEST")
     except Exception as e:
-        logging.error("import_features(%s,%s):%s" % (coverage,fc, e))
+        logging.error("import_features(%s,%s) Append :%s" % (coverage,fc, e))
         
     return True
 
@@ -53,15 +52,15 @@ def import_all_features(source_folder, geodatabase):
     table_xlat = [
         ("mapindex\\polygon", "TaxlotsFD\\MapIndex",      "MapScale"),
 
-        ("cartolin\\arc",     "CartographicLines",        None),
-        ("corner\\point",     "Corner",                   None),
-        ("plssline\\arc",     "PLSSLines",                None),
-        ("refline\\arc",      "ReferenceLines",           None),
+        ("cartolin\\arc",     "CartographicLines",        "MapScale"),
+        ("corner\\point",     "Corner",                   "MapScale"),
+        ("plssline\\arc",     "PLSSLines",                "MapScale"),
+        ("refline\\arc",      "ReferenceLines",           "MapScale"),
         ("taxcode\\arc",      "TaxlotsFD\\TaxCodeLines",  None),
         ("taxcode\\polygon",  "TaxlotsFD\TaxCode",        None),
         ("taxlot\\arc",       "TaxlotsFD\\TaxlotLines",   None),
         ("taxlot\\polygon",   "TaxlotsFD\\Taxlot",        None),
-        ("waterlin\\arc",     "Waterlines",               None),
+        ("waterlin\\arc",     "Waterlines",               "MapScale"),
         ("water\\polygon",    "Water",                    None),
     ]
 
@@ -102,8 +101,14 @@ def fix_fontsize(outputfc):
 
 def fix_caret(outputfc):
     aprint("fix_caret(%s)" % outputfc)
-    arcpy.CalculateField_management(outputfc, "TEXT_",      "!TEXT_!.replace('^',u'\xb0')",      "PYTHON", "")
-    arcpy.CalculateField_management(outputfc, "TextString", "!TextString!.replace('^',u'\xb0')", "PYTHON", "")
+    try:
+        arcpy.CalculateField_management(outputfc, "TEXT_",      "!TEXT_!.replace('^',u'\xb0')",      "PYTHON", "")
+    except Exception as e:
+        aprint("TEXT_ %s" % e)
+    try:
+        arcpy.CalculateField_management(outputfc, "TextString", "!TextString!.replace('^',u'\xb0')", "PYTHON", "")
+    except Exception as e:
+        aprint("TextString %s" % e)
     return True
 
 # Read all the details
@@ -141,25 +146,25 @@ def convert_anno(mxd, destination, reference_scale, overwrite):
     # Assumption is that there is only one dataframe in the annotation mxd.
     df = arcpy.mapping.ListDataFrames(mxd)[0]
 
-    linklist = [   # (Layer name, output featureclass, featurelinked_fc)
-                ("StdAnno.igds 10 scale",   "Anno0010scale",    ""),
-                ("StdAnno.igds 20 scale",   "Anno0020scale",    ""),
-                ("StdAnno.igds 30 scale",   "Anno0030scale",    ""),
-                ("StdAnno.igds 40 scale",   "Anno0040scale",    ""),
-                ("StdAnno.igds 50 scale",   "Anno0050scale",    ""),
-                ("StdAnno.igds 100 scale",  "Anno0100scale",    ""),
-                ("StdAnno.igds 200 scale",  "Anno0200scale",    ""),
-                ("StdAnno.igds 400 scale",  "Anno0400scale",    ""),
-                ("StdAnno.igds 800 scale",  "Anno0800scale",    ""),
-                ("StdAnno.igds 2000 scale", "Anno2000scale",    ""),
+    linklist = [   # (Layer name, output featureclass, reference scale)
+                ("StdAnno.igds 10 scale",   "Anno0010scale",    None),
+                ("StdAnno.igds 20 scale",   "Anno0020scale",    None),
+                ("StdAnno.igds 30 scale",   "Anno0030scale",    None),
+                ("StdAnno.igds 40 scale",   "Anno0040scale",    None),
+                ("StdAnno.igds 50 scale",   "Anno0050scale",    None),
+                ("StdAnno.igds 100 scale",  "Anno0100scale",    None),
+                ("StdAnno.igds 200 scale",  "Anno0200scale",    None),
+                ("StdAnno.igds 400 scale",  "Anno0400scale",    None),
+                ("StdAnno.igds 800 scale",  "Anno0800scale",    None),
+                ("StdAnno.igds 2000 scale", "Anno2000scale",    None),
                 
-                ("FLAnno.igds TaxlotNum",   "TaxlotsFD/TaxlotNumberAnno",  "TaxlotsFD/Taxlot"     ),
-                ("FLAnno.igds Code",        "TaxlotsFD/TaxCodeAnno",       "TaxlotsFD/Taxcode"    ),
-                #("FLAnno.igds Subdivision", "TaxlotsFD/SubdivisionAnno",   "TaxlotsFD/Subdivision"),
-                ("FLAnno.igds TaxlotAcres", "TaxlotsFD/TaxlotAcresAnno",   "TaxlotsFD/Taxlot"     ),
+                ("FLAnno.igds TaxlotNum",   "TaxlotsFD/TaxlotNumberAnno",  None ),
+                ("FLAnno.igds Code",        "TaxlotsFD/TaxCodeAnno",       None ),
+                #("FLAnno.igds Subdivision", "TaxlotsFD/SubdivisionAnno",  None),
+                ("FLAnno.igds TaxlotAcres", "TaxlotsFD/TaxlotAcresAnno",   None ),
            ]
     
-    for (layername, outputname, linkedname) in linklist:
+    for (layername, outputname, refscale) in linklist:
         
         annolayer = arcpy.mapping.ListLayers(mxd, layername, df)[0]
 
@@ -185,7 +190,8 @@ def convert_anno(mxd, destination, reference_scale, overwrite):
                     eprint(msg)
                     warning += 1
                     continue
-            success = import_anno(annolayer, outputfc, linkedfc, reference_scale)
+            if not refscale: refscale = reference_scale
+            success = import_anno(annolayer, outputfc, linkedfc, refscale)
             if not success: warning += 1
             
         if arcpy.Exists(outputfc) and (int(arcpy.GetCount_management(annolayer).getOutput(0)) > 0):
