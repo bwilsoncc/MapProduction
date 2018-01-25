@@ -1,0 +1,18 @@
+/* --- start
+&WATCH C:\GeoModel\MapProduction\assign_level.wat &COMMANDS
+&WORKSPACE C:\GeoModel\Clatsop\Workfolder\t4-10
+/* --- end
+/* Open an annotation layer in a coverage
+/* Copy MAPSCALE to $LEVEL
+/* 
+/* Brian Wilson <bwilson@co.clatsop.or.us>
+/********************************************************************************
+ARCEDIT
+EC taxlotan
+EF annotation.igds 
+SEL ALL
+CALC $LEVEL = MAPSCALE
+SAVE
+Q
+
+&RETURN
