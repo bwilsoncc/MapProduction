@@ -291,7 +291,7 @@ if __name__ == "__main__":
     sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t[4-9]-*"))]
     
     # Uncomment to select one township for testing
-    sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t4-10"))]
+    #sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t4-10"))]
 
     # If this is set to True then existing "preprocess" coverages will be removed and rebuilt
     overwrite = True
@@ -324,8 +324,7 @@ if __name__ == "__main__":
 
             coverage_folder = os.path.join(workspace, "Source", source)
             copy_coverages(datasource, source, coverage_folder)
-
-            
+           
             amlsource = os.path.join(sourcedir, "ConvertAmls")
             ok = preprocess(amlsource, preprocess_folder, coverage_folder)     
             if not ok: 
