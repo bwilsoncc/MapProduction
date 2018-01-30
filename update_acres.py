@@ -2,7 +2,7 @@
 """
 Created on Thu Jan 18 09:19:41 2018
 
-@author: bwilson
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
 """
 from __future__ import print_function
 import os
@@ -27,13 +27,13 @@ def testreadfc(target, fc):
     return
 
 def write_featureclass(fc, fieldnames, where_clause=None):
-    """ Update a column in a feature class with the value from another column. 
+    """ Update a column in a feature class with the value from another column.
     Pass in an array containing the source and destination columns.
     Column 1 should be text containing a specific pattern, see re_acre.
     Column 2 should be a double that will accept a converted text value.
+
     For testing you can set the global "dryrun" to True to bypass writes. 
-    
-    For testing you can set the input to a Source/ coverage, 
+    Also you can set the input to a Source/ coverage, 
     and use fieldnames TEXT, FID
     and set whereclause LEVEL=38
     """
@@ -73,8 +73,7 @@ def write_featureclass(fc, fieldnames, where_clause=None):
     return count
 
 def update_acres(fc):
-    """ Convert the contents of the text acres field to a float
-    and write it to the double field. """
+    """ Convert the contents of the text acres field to a float and write it to the double field. """
     
     fields = ("TAXACRETXT", "TAXACRES")
     return write_featureclass(fc, fields)

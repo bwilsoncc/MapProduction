@@ -15,7 +15,7 @@ import arcpy
 from arcpy import mapping as MAP
 from Toolbox.arc_utilities import aprint, eprint
 from update_acres import update_acres
-from coverage_to_geodatabase import import_all_features, convert_anno
+from coverage_to_geodatabase import import_all_features, fix_mapscale, convert_anno, merge_anno, fix_anno
 
 LOGFILE = "conversion.log"
 
@@ -33,18 +33,19 @@ def enqueue_output(out, q):
     return
 
 def run_aml(amlsource, coverage_folder, preprocess_folder):    
-    """ Run an AML file; but before running it, 
-        put the correct strings into the AMLs to describe source and output locations.
+    """
+    Run an AML file; but before running it, 
+    put the correct strings into the AMLs to describe source and output locations.
     
-        Use full paths for everything; arc finds relative paths confusing. This is because
-        the &WORKSPACE command does a CHDIR and therefore Arc forgets what the current folder is.
-        Anyway. Use full paths for all parameters.
+    Use full paths for everything; arc finds relative paths confusing. This is because
+    the &WORKSPACE command does a CHDIR and therefore Arc forgets what the current folder is.
+    Anyway. Use full paths for all parameters.
         
-        "amlsource" is the path to a file containing AML code
-        "coverage_folder" is the location of the source coverage data
-        "preprocess_folder" is location where the coverages will be written
+    "amlsource" is the path to a file containing AML code
+    "coverage_folder" is the location of the source coverage data
+    "preprocess_folder" is location where the coverages will be written
         
-        AML files and WATCH files will be written into the preprocess_folder
+    AML files and WATCH files will be written into the preprocess_folder
     """ 
 
     verbose = False # Show all output of AML scripts.
@@ -173,9 +174,9 @@ def preprocess(amlsource_folder, preprocess_folder, coverage_folder):
     if not os.path.exists(preprocess_folder): os.mkdir(preprocess_folder)
     os.chdir(preprocess_folder)
 
-    # We run 01-14 because #15 is BROKEN -- read the docs!
+    # We run 01-15 because 99- is BROKEN -- read the docs!
             
-    for amlnumber in range(1,15):
+    for amlnumber in range(1,16):
         amlfile = glob(os.path.join(amlsource_folder, "%02d-*.aml" % amlnumber))[0]
         #print(amlfile, coverage_folder, preprocess_folder)
         ok = run_aml(amlfile, coverage_folder, preprocess_folder)
@@ -187,7 +188,11 @@ def preprocess(amlsource_folder, preprocess_folder, coverage_folder):
     return rval
 
 def copy_geodatabase(source, geodatabase):
-    copyfile(source, geodatabase)
+    (f,e) = os.path.splitext(source)
+    if e.lower() == ".gdb":
+        copytree(source,geodatabase)
+    else:
+        copyfile(source, geodatabase)
     print("Copied empty geodatabase to %s" % geodatabase)
         
 def repair_layer(lyr, oldp, newp):
@@ -201,13 +206,13 @@ def repair_layer(lyr, oldp, newp):
         ds = os.path.normcase(lyr.dataSource)
         op = os.path.normcase(oldp)
         #np = os.path.normcase(newp)        
-        #print("          %s" % lyr.dataSource)
-        #print("    old   %s" % oldp)
-        #print("    new?  %s" % newp)
+        print("          %s" % lyr.dataSource)
+        print("    old   %s" % oldp)
+        print("    new?  %s" % newp)
         if ds.find(op)==0:
             #print("   Layer: %s" % lyr.longName)
             dataset = ds[len(op)+1:]
-            if dataset.find(".mdb")>0:
+            if dataset.find(".mdb")>0 or dataset.find(".gdb")>0:
                 return 0
             #print("***       %s  %s" % (newp, dataset))
             try:
@@ -220,18 +225,17 @@ def repair_layer(lyr, oldp, newp):
         
     return rcount
         
-def repair_mxd(mxdname, sourcedir, workfolder, target):
+def repair_mxd(mxdname, sourcedir, workfolder, gdb, target):
     
     #print("----------------------------------------")
     #print(mxdname)
     m = arcpy.mapping.MapDocument(mxdname) 
-    mdb = "ORMAP-SchemaN_08-21-08.mdb"
     count = 0
     l_df = MAP.ListDataFrames(m)
     for df in l_df:
         for lyr in MAP.ListLayers(m, "", df):
-            oldpath = os.path.join(sourcedir, mdb)
-            newpath = os.path.join(workfolder, target, mdb)
+            oldpath = os.path.join(sourcedir, gdb)
+            newpath = os.path.join(workfolder, target, gdb)
             r = repair_layer(lyr, oldpath, newpath)
             if r:
                 count += r
@@ -264,7 +268,7 @@ def repair_mxd(mxdname, sourcedir, workfolder, target):
     
     pass
             
-def install_mxds(sourcedir, workfolder, target):
+def install_mxds(sourcedir, workfolder, gdb, target):
     for s,d in [
                 ("ConversionTEMPLATE.mxd","Conversion.mxd"),
                 ("AnnoTEMPLATE.mxd","Annotation.mxd")
@@ -274,7 +278,7 @@ def install_mxds(sourcedir, workfolder, target):
         if not os.path.exists(dest):
             print(source, " ==>", dest)
             copyfile(source, dest)
-            repair_mxd(dest, sourcedir, workfolder, target)
+            repair_mxd(dest, sourcedir, workfolder, gdb, target)
 
 # =============================================================================
 if __name__ == "__main__":
@@ -285,21 +289,23 @@ if __name__ == "__main__":
     datasource  = "c:\\taxmaped_BACKUPS"
     sourcedir   = "C:\\GeoModel\\Clatsop"
     workspace   = sourcedir
-    geodatabase = "ORMAP-SchemaN_08-21-08.mdb"
+    #geodatabase_source = "C:\\GeoModel\\Clatsop\\ORMAP-SchemaN_08-21-08\\ORMAP-SchemaN_08-21-08.mdb"
+    #geodatabase  = "ORMAP_Clatsop.mdb"
+    geodatabase_source = "C:\\GeoModel\\MapProduction\\ORMAP_Clatsop_Schema.gdb"
+    geodatabase  = "ORMAP_Clatsop.gdb"
 
     # Do everything  
     sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t[4-9]-*"))]
     
     # Uncomment to select one township for testing
     #sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t4-10"))]
+    # ...or one row of townships
+    #sources = [ tfolder for tfolder in glob(os.path.join(datasource,"t4-[67]*"))]
 
     # If this is set to True then existing "preprocess" coverages will be removed and rebuilt
     overwrite = True
     overwrite = False
-    
-    overwrite_anno = True        
-    #overwrite_anno = False
-    
+
     ok = True
 
     for sourcefullpath in sources:
@@ -330,33 +336,51 @@ if __name__ == "__main__":
             if not ok: 
                 logging.warn("Preprocessing completed with errors.")
     
-        # Copy a blank geodatabase into our workspace.
-        sourcegdb = os.path.join(sourcedir, "ORMAP-SchemaN_08-21-08", geodatabase)
-        gdb       = os.path.join(preprocess_folder, geodatabase)
-        if os.path.exists(gdb):
-            msg = "Skipping geodatabase conversion; ORMAP gdb exists."
+        # UNFORTUNATELY
+        # there is no way to merge from coverage annotation into annotation feature class, only IMPORT
+        # so on the first pass I import annotation into a separate feature class
+        # then append into the combined.
+        # BUT WAIT, there's more! "Append" only works if the feature classes are in the same database!
+        # So I can't build a scratch database for each township and then merge them!
+
+        # If I could then output could go to this township gdb.
+        # Use this code if you don't want all the data in one geodatabase at the end.
+        unmerged_gdb = os.path.join(preprocess_folder, geodatabase) # Worksace per township
+        #if not os.path.exists(unmerged_gdb):
+            # Create a blank geodatabase from the template.
+        #    copy_geodatabase(geodatabase_source, unmerged_gdb)
+
+        merged_gdb = os.path.join(workspace, "Workfolder", geodatabase) # Combined workspace
+        if os.path.exists(merged_gdb):
+            msg = "Merging data into \"%s\"." % merged_gdb
             logging.info(msg)
             aprint(msg)
         else:       
-            copy_geodatabase(sourcegdb, gdb)
-            # This will replace any previously imported feature classes;
-            # it does a "delete all" followed by an append.
-            import_all_features(preprocess_folder, gdb)
+            # Create a blank geodatabase from the template.
+            copy_geodatabase(geodatabase_source, merged_gdb)
+
+        import_all_features(preprocess_folder, merged_gdb, merge=True)
 
         # Copy the supporting MXD's into our workspace
-        install_mxds(sourcedir, os.path.join(workspace, "Workfolder"), source)
+        # This also "repairs" coverage annotation data sources so that they point at the correct data.
+
+        install_mxds(sourcedir, os.path.join(workspace, "Workfolder"), geodatabase, source)
         
         logging.info("Convert annotation %s" % source)
         reference_scale = "1200"
         mxdname = os.path.join(preprocess_folder, "Annotation.mxd")
         mxd = MAP.MapDocument(mxdname)
-        convert_anno(mxd, gdb, reference_scale, overwrite_anno)
+        convert_anno(mxd, merged_gdb, reference_scale, merge=True)
         del mxd # release schema locks
         
         os.chdir(saved)
+
+    fix_anno(geodatabase)
+    fix_mapscale(geodatabase)
 
     if ok: 
         print("All done!")
     else:
         print("We finished with errors!")
+
 # That's all!
