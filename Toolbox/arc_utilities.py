@@ -5,21 +5,21 @@
 #
 from __future__ import print_function
 import sys
-from arcpy import AddMessage, AddError, Exists, Delete_management
+from arcpy import AddMessage, AddError, Exists, Delete_management, ListFields
 from arcpy import mapping as MAP
 
 def aprint(msg):		
     """ Print a message. Execution does not stop. """		
-    print(msg)		
-    sys.stdout.flush()		
+    #print(msg)		    # not needed with visual studio
+    #sys.stdout.flush()		
     AddMessage(msg)		
 		
 def eprint(msg):		
     """ Print a message. Execution will stop when you use this one. """		
-    print("ERROR:",msg)		
+    #print("ERROR:",msg) # not needed with visual studio	
     AddError(msg)	
 
-def deletefc(fc):
+def DeleteFC(fc):
     """ Delete a feature class if it exists. """
     msg = "Feature class '%s'" % fc
     if Exists(fc):
@@ -28,8 +28,12 @@ def deletefc(fc):
     aprint(msg)
     return	
 		
-def get_dataframe(mxd, dfname):		
-    """ Return the named dataframe object. """		
+def ListFieldNames(fc):
+    """ Return a list of the names of the fields in a feature class. """
+    return [f.name for f in ListFields(fc)]
+
+def GetDataframe(mxd, dfname):		
+    """ Return the named dataframe object from an MXD. """		
     df = None		
     try:		
         df = MAP.ListDataFrames(mxd, dfname)[0]		
@@ -37,7 +41,8 @@ def get_dataframe(mxd, dfname):
         aprint("Dataframe not found. Make sure it is named '%s'. \"%s\"" % (dfname,e))		
     return df		
 		
-def get_layer(mxd, df, layername):		
+def GetLayer(mxd, df, layername):
+    """ Return the named layer from an MXD. """
     layer = None		
     try:		
         layer = MAP.ListLayers(mxd, layername, df)[0]		
@@ -48,6 +53,10 @@ def get_layer(mxd, df, layername):
 if __name__ == "__main__":
 
     mxdname = "TestMap.mxd" # Often set to "CURRENT"
+
+    arcpy.env.workspace = "C:\\GeoModel\\MapProduction\\ORMAP_Clatsop_Schema.gdb\\TaxlotsFD"
+    l = ListFieldNames("Taxlot")
+    print(l)
       		
     aprint("Unit test aprint")
     eprint("Unit test eprint")      
@@ -55,8 +64,8 @@ if __name__ == "__main__":
     dfname = "MapView"
     layername = "MapIndex"
     mxd = MAP.MapDocument(mxdname)
-    df = get_dataframe(mxd, dfname)
-    layer = get_layer(mxd, df, layername)
+    df = GetDataframe(mxd, dfname)
+    layer = GetLayer(mxd, df, layername)
     aprint("layer.dataSource=%s"%layer.dataSource)		
          
     del mxd
