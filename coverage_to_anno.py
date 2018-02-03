@@ -1,143 +1,16 @@
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------------
-# convert_to_geodatabase.py
-# Created on: 2018-01-10 15:29:52.00000
+# convert_to_anno.py
+# Created on: 2018-02-02 16:29:52.00000
 # Description:
-# Convert coverages to geodatabase feature classes
-# Usage: convert_to_geodatabase.py coverage_folder geodatabase
+# Convert annotation coverages to geodatabase annotation feature classes
 # ---------------------------------------------------------------------------
 from __future__ import print_function
 import arcpy
-import os
-import logging
+import os, logging
 from Toolbox.arc_utilities import aprint, eprint, ListFieldNames, DeleteFC
 
 # ========================================================================
-
-def import_features(coverage, fc, merge):
-    """ Import a coverage into a geodatabase feature class.
-    The output feature class has to exist. If "merge" = False,
-    then delete any existing features first. """
-
-    if not arcpy.Exists(coverage):
-        msg = "Input coverage must exist. %s" % coverage
-        eprint(msg)
-        logging.error(msg)
-        return False
-    
-    if not arcpy.Exists(fc):
-        msg = "Output feature class must exist. %s" % fc
-        eprint(msg)
-        logging.error(msg)
-        return False
-    
-    if not merge:
-        try:
-            arcpy.DeleteFeatures_management(fc)
-        except Exception as e:
-            logging.error("import_features(%s,%s) DeleteFeatures :%s" % (coverage,fc, e))
-
-    try:
-        arcpy.Append_management(coverage, fc, "NO_TEST")
-    except Exception as e:
-        logging.error("import_features(%s,%s) Append :%s" % (coverage,fc, e))
-        
-    return True
-
-def import_all_features(source_folder, geodatabase, merge=False):
-
-    # First item is coverage name, second is featureclass name
-    table_xlat = [
-        ("mapindex\\polygon", "TaxlotsFD\\MapIndex",      "MapScale"),
-
-        ("cartolin\\arc",     "CartographicLines",        "MapScale"),
-        ("corner\\point",     "Corner",                   "MapScale"),
-        ("plssline\\arc",     "PLSSLines",                "MapScale"),
-        ("refline\\arc",      "ReferenceLines",           "MapScale"),
-        ("taxcode\\arc",      "TaxlotsFD\\TaxCodeLines",  None),
-        ("taxcode\\polygon",  "TaxlotsFD\TaxCode",        None),
-        ("taxlot\\arc",       "TaxlotsFD\\TaxlotLines",   None),
-        ("taxlot\\polygon",   "TaxlotsFD\\Taxlot",        None),
-        ("waterlin\\arc",     "Waterlines",               "MapScale"),
-        ("water\\polygon",    "Water",                    None),
-    ]
-
-    start    = 0
-    maxcount = len(table_xlat)
-    step     = 1
-    
-    arcpy.SetProgressor("step", "Importing %d coverages." % maxcount, start, maxcount, step)
-
-    t = 0
-    for coverage,fc,fieldname in table_xlat:
-        msg = "Importing %s to %s." % (coverage, fc)
-        arcpy.SetProgressorLabel(msg)
-        t += 1
-        #print("%d/%d" % (t, maxcount), msg)
-
-        srccvg = os.path.join(source_folder, coverage)        
-        destfc = os.path.join(geodatabase, fc)
-
-        aprint("Importing %s to %s." % (coverage,fc))
-        import_features(srccvg, destfc, merge)
-            
-        arcpy.SetProgressorPosition(t)
-
-    return True
-
-__stdscales = {
-        10:120,
-        20:240,
-        30:360,
-        40:480,
-        50:600,
-        100:1200,
-        200:2400,
-        400:4800,
-        800:9600,
-        1000:12000,
-        2000:24000}
-
-def fixmapscale(fc):
-    """ Fix the values of a mapscale column, if they are not already correct. """
-
-    if not arcpy.Exists(fc) or int(arcpy.GetCount_management(fc).getOutput(0)) == 0:
-        return
-    d = arcpy.Describe(fc)
-    if d.featureType != "Simple":
-        return
-    for f in ListFieldNames(fc):
-        if f.lower() == 'mapscale':
-            aprint("Recalculating %s in %s." % (f,fc))
-            with arcpy.da.UpdateCursor(fc, [f]) as cursor:
-                for row in cursor:
-                    try:
-                        newscale = __stdscales[row[0]]
-                        row[0] = newscale
-                        cursor.updateRow(row)
-                    except KeyError:
-                        continue # Probably does not need updating
-            break
-    return
-
-def fix_mapscales(gdb):
-    """ Fix the "mapscale" field in every feature class in a geodatabase. """
-    saved = arcpy.env.workspace
-    arcpy.env.workspace = gdb
-
-    fdlist = arcpy.ListDatasets()
-    if fdlist: 
-        for fd in fdlist:
-            for fc in arcpy.ListFeatureClasses(feature_dataset=fd):
-                fixmapscale(fc)
-
-    for fc in arcpy.ListFeatureClasses():
-        fixmapscale(fc)
-
-    arcpy.env.workspace = saved
-    return
-
-# ---------------------------------------------------------------------------
 
 def fix_fontsize(outputfc):
     aprint("fix_fontsize(%s)" % outputfc)
@@ -162,7 +35,6 @@ def fix_anno(fc):
         fix_caret(fc)
 
     return
-
 
 # Read all the details
 # http://desktop.arcgis.com/en/arcmap/latest/tools/conversion-toolbox/import-coverage-annotation.htm
@@ -293,19 +165,8 @@ def convert_anno(mxd, destination,  target, d_anno):
 if __name__ == "__main__":
 
     workfolder = "C:\\GeoModel\\Clatsop\\Workfolder"
-    target = "t4-10"
+    target = "t8-9"
     
-    sourcedir = os.path.join(workfolder, target)
-    geodatabase = os.path.join(workfolder, "ORMAP_Clatsop.gdb")
-    fix_mapscales(geodatabase)
-    fix_anno(geodatabase)
-    exit(0)
-
-    #print("Importing features...")
-    d_features = {}
-    #import_all_features(sourcedir, geodatabase, d_features)
-    for outputfc in d_features:
-        fix_mapscale(outputfc, d_features[outputfc])
     print("Importing annotation...")
     
     # "merge" means add annotation to existing fc
@@ -326,3 +187,4 @@ if __name__ == "__main__":
     print("Tests completed.")
 
 # That's all!
+
