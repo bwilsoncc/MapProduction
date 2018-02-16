@@ -120,4 +120,6 @@ if __name__ == "__main__":
         result = "0408.00N10.00W05CD--0000"
         zoomo.execute(params, Messenger())
 
+    pass
+
 # That's all!
