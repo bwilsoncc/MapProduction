@@ -45,7 +45,7 @@ MainLayers=[
     ("LotsAnno",         ANNO_QD),
     ("PlatsAnno",        ANNO_QD),
     ("TaxCodeAnno",      ANNO_QD),
-    ("TaxlotNumberAnno", ANNO_QD),
+    ("TaxlotAnno",       ANNO_QD),
     ("AcresAnno",        ANNO_QD),
     ("Anno0010scale",    ANNO_QD),        
     ("Anno0020scale",    ANNO_QD),        
