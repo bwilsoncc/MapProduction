@@ -17,7 +17,8 @@ from arcpy import mapping as MAP
 
 from Toolbox.arc_utilities import aprint, eprint
 from update_acres import update_acres
-from coverage_to_geodatabase import import_all_features, fix_mapscales, convert_anno, merge_anno, fix_anno
+from coverage_to_geodatabase import import_all_features, fix_mapscales, make_polygons
+from coverage_to_anno import convert_anno, merge_anno, fix_anno
 from preprocess import preprocess
 
 MYNAME  = os.path.splitext(os.path.split(__file__)[1])[0]
@@ -121,8 +122,8 @@ def repair_mxd(mxdname, sourcedir, workfolder, gdb, target, gdb_target):
             
 def install_mxds(sourcedir, workfolder, gdb, target):
     for s,d in [
-                ("ConversionTEMPLATE.mxd","Conversion.mxd"),
-                ("AnnoTEMPLATE.mxd","Annotation.mxd")
+#                ("ConversionTEMPLATE.mxd", "Conversion.mxd"),
+                ("AnnoConvertTEMPLATE.mxd", "Annotation.mxd")
                 ]:
         source = os.path.join(sourcedir, s)
         dest   = os.path.join(workfolder, target, d)
@@ -132,7 +133,7 @@ def install_mxds(sourcedir, workfolder, gdb, target):
 
             gdb_target = "" #merged database
             #gdb_target = target #unmerged
-            repair_mxd(dest, sourcedir, workfolder, gdb, target, gdb_target)
+            #repair_mxd(dest, sourcedir, workfolder, gdb, target, gdb_target)
     return
 
 # =============================================================================
@@ -141,39 +142,33 @@ if __name__ == "__main__":
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(filename=LOGFILE, level=logging.DEBUG, format=FORMAT)
 
-    #archive  = "k:\\taxmaped\\Clatsop\\towned"
-    archive  = "c:\\taxmaped_BACKUPS"
-    sourcedir   = "C:\\GeoModel\\Clatsop"
-    workspace   = sourcedir
-    #geodatabase_source = "C:\\GeoModel\\Clatsop\\ORMAP-SchemaN_08-21-08\\ORMAP-SchemaN_08-21-08.mdb"
-    #geodatabase  = "ORMAP_Clatsop.mdb"
+    #archive           = "k:\\taxmaped\\Clatsop\\towned"
+    archive            = "c:\\taxmaped_BACKUPS"
+    workspace          = "C:\\GeoModel\\Clatsop"
     geodatabase_source = "C:\\GeoModel\\MapProduction\\ORMAP_Clatsop_Schema.gdb"
-    geodatabase  = "ORMAP_Clatsop.gdb"
+    geodatabase        = "ORMAP_Clatsop.gdb"
 
     # Do everything  
-    sources = [ tfolder for tfolder in glob(os.path.join(archive,"t[4-9]-*"))]
+    archives = [ tfolder for tfolder in glob(os.path.join(archive,"t[4-9]-*"))]
     # Uncomment to select one township for testing
-    sources = [ tfolder for tfolder in glob(os.path.join(archive,"t8-[89]"))]
+    #archives = [ tfolder for tfolder in glob(os.path.join(archive,"t8-[89]"))]
     # ...or one row of townships
-    #sources = [ tfolder for tfolder in glob(os.path.join(archive,"t4-[67]*"))]
+    #archives = [ tfolder for tfolder in glob(os.path.join(archive,"t5-*"))]
     # ...or with an empty list, you can test the code outside the "for" loop...
-    #sources = []
-
-    # If this is set to True then existing "preprocess" coverages will be removed and rebuilt
-    overwrite = True
-    overwrite = False
+    #archives = []
 
     ok = True
-
-    merged_gdb = os.path.join(workspace, "Workfolder", geodatabase) # Combined workspace
+    sourcefolder = os.path.join(workspace, "Source")
+    homefolder   = os.path.join(workspace, "Workfolder")
+    merged_gdb   = os.path.join(homefolder, geodatabase) # Combined workspace
     d_anno = defaultdict(list)
 
     # Make a backup copy of the cartographer's files then use the backup as the source for our work.
     # This step is totally unnecessary but it should speed up testing since the data will be on the local drive.
     # If you really want the copy to happen you must delete the Source/ folder contents
     # since this function will not overwrite.
-    for sourcefullpath in sources:
-        backup_coverages(sourcefullpath, os.path.join(workspace, "Source"))
+    for archivefullpath in archives:
+        backup_coverages(archivefullpath, sourcefolder)
 
     if os.path.exists(merged_gdb):
         msg = "Merging data into existing \"%s\"." % merged_gdb
@@ -183,16 +178,20 @@ if __name__ == "__main__":
         # Create a blank geodatabase from the template.
         copy_geodatabase(geodatabase_source, merged_gdb)
 
-    for sourcefullpath in sources:
-        continue
-        sourcepath, township = os.path.split(sourcefullpath)
-              
-        amlsource = os.path.join(sourcedir, "ConvertAmls")
-        amlsource = os.path.join("C:\\GeoModel\\MapProduction\\Dean\AML")
-        ok = preprocess(amlsource, preprocess_folder, coverage_folder)     
+    for archivefullpath in archives:
+        archive, township = os.path.split(archivefullpath)
+        sourcefullpath    = os.path.join(sourcefolder, township) 
+        workfolder        = os.path.join(workspace, "Workfolder", township)
+
+#        if os.path.exists(workfolder): 
+#            print("Delete %s if you want to re-process it." % workfolder)
+#            continue
+
+        amlsource = os.path.join(workspace, "AML")
+        ok = preprocess(amlsource, sourcefullpath, workfolder)     
         if not ok: 
             logging.warn("Preprocessing completed with errors.")
-    
+
         # UNFORTUNATELY
         # there is no way to merge from coverage annotation into annotation feature class, only IMPORT
         # so on the first pass I import annotation into a separate feature class
@@ -202,33 +201,40 @@ if __name__ == "__main__":
 
         # If I could then output could go to this township gdb.
         # Use this code if you don't want all the data in one geodatabase at the end.
-        unmerged_gdb = os.path.join(preprocess_folder, geodatabase) # Worksace per township
+        unmerged_gdb = os.path.join(sourcefullpath, geodatabase) # Worksace per township
         #if not os.path.exists(unmerged_gdb):
         #    # Create a blank geodatabase from the template.
         #    copy_geodatabase(geodatabase_source, unmerged_gdb)
 
-        #import_all_features(preprocess_folder, merged_gdb, merge=True)
+        if True: # Set to False to skip the actual coverage -> gdb step during testing!
+            import_all_features(workfolder, merged_gdb, merge=True)
+
+            saved = arcpy.env.workspace
+            arcpy.env.workspace = os.path.join(merged_gdb, "TaxlotsFD")
+            make_polygons("MapIndexLines", "MapIndexPoints", "MapIndex")
+            make_polygons("TaxcodeLines", "TaxcodePoints", "Taxcode")
+            make_polygons("TaxlotLines", "TaxlotPoints", "Taxlot")
+            arcpy.env.workspace = saved
 
         # Copy the supporting MXD's into our workspace
-        # This also "repairs" coverage annotation data sources so that they point at the correct data.
-
-        install_mxds(sourcedir, os.path.join(workspace, "Workfolder"), geodatabase, source)
+        # This also "repairs" data sources if they need to be
+        install_mxds(workspace, homefolder, geodatabase, township)
         
-        logging.info("Convert annotation %s" % source)
-        mxdname = os.path.join(preprocess_folder, "Annotation.mxd")
+        logging.info("Convert annotation %s" % township)
+        mxdname = os.path.join(workfolder, "Annotation.mxd")
         if not os.path.exists(mxdname):
             eprint("MXD \"%s\" not found." % mxdname)
         else:
             mxd = MAP.MapDocument(mxdname)
-            convert_anno(mxd, merged_gdb, source.replace('-','_'), d_anno)
+            convert_anno(mxd, merged_gdb, township.replace('-','_'), d_anno)
             del mxd # release schema locks
 
     for dst in d_anno:
-        #merge_anno(d_anno[dst], dst)
-        #fix_anno(dst)
+        merge_anno(d_anno[dst], dst)
+        fix_anno(dst) # this is slow, let's do it later... tomorrow maybe
         pass
 
-    #fix_mapscales(merged_gdb)
+    fix_mapscales(merged_gdb, ["MapIndex"])
 
     if ok: 
         print("All done!")
@@ -236,4 +242,3 @@ if __name__ == "__main__":
         print("We finished with errors!")
 
 # That's all!
-

@@ -13,11 +13,12 @@ from Toolbox.arc_utilities import aprint, eprint, ListFieldNames, DeleteFC
 # ========================================================================
 
 def fix_fontsize(outputfc):
-    aprint("fix_fontsize(%s)" % outputfc)
+    logging.info("fix_fontsize(%s)" % outputfc)
     arcpy.CalculateField_management(outputfc, "FontSize", "!MAPSIZE!", "PYTHON", "")
+    return
 
 def fix_caret(outputfc):
-    aprint("fix_caret(%s)" % outputfc)
+    logging.info("fix_caret(%s)" % outputfc)
     fields = ListFieldNames(outputfc)
     if "TEXT_" in fields:
         arcpy.CalculateField_management(outputfc, "TEXT_",      "!TEXT_!.replace('^',u'\xb0')",      "PYTHON", "")
@@ -42,7 +43,7 @@ def fix_anno(fc):
 def import_anno(annolayer, outputfc, linkedfc):
     success = True 
   
-    aprint("Importing \"%s\" to \"%s\" Linked FC: \"%s\"" % (annolayer.name, outputfc, linkedfc)) 
+    logging.info("import_anno(\"%s\", \"%s\")" % (annolayer.name, outputfc)) 
     reference_scale = 1200.0
     linked = "STANDARD"
     if linkedfc: linked = "FEATURE_LINKED"
@@ -72,10 +73,18 @@ def merge_anno(src,dst):
     success = True
     reference_scale = 1200.0
     try: 
+        logging.info("merge_anno(%s, %s)" % (src,dst))
         arcpy.AppendAnnotation_management(src, dst, reference_scale, 
                                          "CREATE_CLASSES", 
                                          "NO_SYMBOL_REQUIRED", 
                                          "AUTO_CREATE", "AUTO_UPDATE")
+        # I should delete the source fc's here, right? Otherwise we end up with about 100 extra fc's.
+        if isinstance(src,list):
+            for s in src:
+                arcpy.Delete_management(s)
+        else:
+            arcpy.Delete_management(src)
+
     except Exception as e:
         msg = "merge_anno(%s, %s), \"%s\"" % (src, dst, e)
         aprint(msg)
@@ -99,28 +108,45 @@ def convert_anno(mxd, destination,  target, d_anno):
     # Assumption is that there is only one dataframe in the annotation mxd.
     df = arcpy.mapping.ListDataFrames(mxd)[0]
 
-    layers = [   # (Layer name, output featureclass, templated)
-                ("StdAnno.igds 10 scale",   "AnnotationFD\\Anno0010scale",  True),
-                ("StdAnno.igds 20 scale",   "AnnotationFD\\Anno0020scale",  True),
-                ("StdAnno.igds 30 scale",   "AnnotationFD\\Anno0030scale",  True),
-                ("StdAnno.igds 40 scale",   "AnnotationFD\\Anno0040scale",  True),
-                ("StdAnno.igds 50 scale",   "AnnotationFD\\Anno0050scale",  True),
-                ("StdAnno.igds 100 scale",  "AnnotationFD\\Anno0100scale",  True),
-                ("StdAnno.igds 200 scale",  "AnnotationFD\\Anno0200scale",  True),
-                ("StdAnno.igds 400 scale",  "AnnotationFD\\Anno0400scale",  True),
-                ("StdAnno.igds 800 scale",  "AnnotationFD\\Anno0800scale",  True),
-                ("StdAnno.igds 2000 scale", "AnnotationFD\\Anno2000scale",  True),
-    
-                ("FLAnno.igds Taxlot",      "TaxlotsFD\\TaxlotAnno",        False),
-                ("FLAnno.igds Taxcode",     "TaxlotsFD\\TaxCodeAnno",       False),
-                ("FLAnno.igds TaxlotAcres", "TaxlotsFD\\TaxlotAcresAnno",   False),
-               ]
+    layers = [
+        ("TaxmapAnno0100.igds",             "AnnotationFD\\Anno0100Scale",  True),
+        ("TaxmapAnno0200.igds",             "AnnotationFD\\Anno0200Scale",  True),
+        ("TaxmapAnno0400.igds",             "AnnotationFD\\Anno0400Scale",  True),
+        ("TaxmapAnno2000.igds",             "AnnotationFD\\Anno2000Scale",  True),
+
+        ("TaxLotAn.igds",                   "TaxlotsFD\\TaxlotAnno",        False),
+        ("TaxCodAn.igds",                   "TaxlotsFD\\TaxCodeAnno",       False),
+        ]
+
+#    oldlayers = [   # (    Layer name,              output featureclass,      templated)
+#                ("StdAnno.igds 10 scale",   "AnnotationFD\\Anno0010scale",  True),
+#                ("StdAnno.igds 20 scale",   "AnnotationFD\\Anno0020scale",  True),
+#                ("StdAnno.igds 30 scale",   "AnnotationFD\\Anno0030scale",  True),
+#                ("StdAnno.igds 40 scale",   "AnnotationFD\\Anno0040scale",  True),
+#                ("StdAnno.igds 50 scale",   "AnnotationFD\\Anno0050scale",  True),
+#                ("StdAnno.igds 100 scale",  "AnnotationFD\\Anno0100scale",  True),
+#                ("StdAnno.igds 200 scale",  "AnnotationFD\\Anno0200scale",  True),
+#                ("StdAnno.igds 400 scale",  "AnnotationFD\\Anno0400scale",  True),
+#                ("StdAnno.igds 800 scale",  "AnnotationFD\\Anno0800scale",  True),
+#                ("StdAnno.igds 2000 scale", "AnnotationFD\\Anno2000scale",  True),
+#    
+#                ("FLAnno.igds Taxlot",      "TaxlotsFD\\TaxlotAnno",        False),
+#                ("FLAnno.igds Taxcode",     "TaxlotsFD\\TaxCodeAnno",       False),
+#                ("FLAnno.igds TaxlotAcres", "TaxlotsFD\\TaxlotAcresAnno",   False),
+#               ]
     
     mergelist = []
 
     for (layername, outputname, templated) in layers:
 
-        annocoverage = arcpy.mapping.ListLayers(mxd, layername, df)[0]
+        try:
+            annocoverage = arcpy.mapping.ListLayers(mxd, layername, df)[0]
+        except Exception as e:
+            aprint("convert_anno: %s" % e)
+            warning += 1
+            continue
+
+        logging.info("convert_anno: %s => %s" % (layername,outputname))
 
 # per conversation with Dean on 1/22/18, dont do feature linked annotation.
 # per conversation with Adam 1/26, it's really not needed right now anyway;
@@ -136,6 +162,8 @@ def convert_anno(mxd, destination,  target, d_anno):
     
         annocount = int(arcpy.GetCount_management(annocoverage).getOutput(0))
         if annocount <= 0:
+            logging.info("convert_anno: EMPTY %s" % annocoverage)
+            warning += 1
             continue
 
         dstfc =  os.path.join(destination, outputname)

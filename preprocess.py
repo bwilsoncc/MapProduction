@@ -45,10 +45,9 @@ def run_aml(amlsource, sourcefolder):
     the &WORKSPACE command does a CHDIR anyway.
         
     "amlsource" is the path to a file containing AML code
-    "coverage_folder" is the location of the source coverage data
-    "preprocess_folder" is location where the coverages will be written
+    "source_folder" is the location of the source coverage data
         
-    AML files and WATCH files will be written into the preprocess_folder
+    AML files and WATCH files will be written into the workspace (cwd)
     """ 
     args = ["c:/arcgis/arcexe9x/bin/arc", "&r " + amlsource, sourcefolder]
     
@@ -67,7 +66,7 @@ def run_aml(amlsource, sourcefolder):
     # Look for error messages
     # If it's been a long time, kill the child process. (Sad!)
     
-    restart   = 60 # yes it can take this long sometimes!
+    restart   = 120 # yes it can take this long sometimes!
     countdown = restart # Wait for a response
     retcode   = None
     while (countdown>0):
@@ -115,59 +114,48 @@ def run_aml(amlsource, sourcefolder):
     return ok
 
 def preprocess(codefolder, sourcefolder, workfolder):
-
+    ok = True
     l_aml = [
-        "01-MakeMapIndex.aml", 
-        "02-Maketaxcode.aml", 
-        "03-MakeTaxlot.aml", 
-        "04-convertanno.aml", 
-        "05-convertseemap.aml", 
-        #"06-taxcodeanno.aml",  # old code
-        #"07-taxlotanno.aml",   # old code
+        "01-MakeMapIndex.aml",
+        "02-Maketaxcode.aml",
+        "03-MakeTaxlot.aml",
+        "04-convertanno.aml",
+        "05-convertseemap.aml",
         "08-MakeRefLines.aml", 
         "09-MakeCARTOLINES.aml", 
         "10-MakeCornerPoints.aml", 
         "11-MakePLSSLines.aml", 
         "12-MakeWaterLines.aml", 
-        #"13-MAKESECTIONCORNERANN.AML", 
         #"14-ACRESanno.aml", # old code
         #"CC1-AssignAnnotationClasses.aml", # Brian wrote this one.
         "15-FinishAnno.aml",
-        ]
-    l_py = [
-        "ConversionTools\\1.ConvertLinesandPoly.py",
-        "ConversionTools\\2.ConvertAnno.py"
         ]
     saved = os.getcwd()
 
     for aml in l_aml:
         # Clear out the remnants of any previous conversion
         #rmtree(workfolder, ignore_errors=True)
+
         if not os.path.exists(workfolder): 
             os.mkdir(workfolder)
         os.chdir(workfolder)
-        aprint("\t"+aml)
-        run_aml(os.path.join(codefolder, aml), sourcefolder)
 
-#            "&workspace conversiontools",
-#        "runpy.aml", # this is a wrapper around some python code!
-#        ]
+        # Use the existence of a WAT file as evidence we don't need to rerun a step
+        baseaml,ext = os.path.splitext(aml)
+        wat = baseaml + ".wat"
+        if not os.path.exists(wat):
+            aprint("\t"+aml)
+            if not run_aml(os.path.join(codefolder, aml), sourcefolder):
+                ok = False
+        else:
+            aprint("Skipping %s because .WAT exists." % (baseaml))
 
     os.chdir(saved)
-    return
-
-    # We run 01-15 because 99- is BROKEN -- read the docs!
-            
-    for amlnumber in range(1,16):
-        amlfile = glob(os.path.join(amlsource_folder, "%02d-*.aml" % amlnumber))[0]
-        #print(amlfile, coverage_folder, preprocess_folder)
-        ok = run_aml(amlfile, coverage_folder, preprocess_folder)
-        if not ok: rval = False 
     
-    count = update_acres(os.path.join("taxacan", "annotation.igds"))
-    logging.info("TAXACRES updated in %d rows" % count)
+#    count = update_acres(os.path.join("taxacan", "annotation.igds"))
+#    logging.info("TAXACRES updated in %d rows" % count)
 
-    return rval
+    return ok
         
 # =============================================================================
 if __name__ == "__main__":
@@ -194,7 +182,6 @@ if __name__ == "__main__":
         logging.info(msg)
         aprint(msg)
            
-        #amlsource = os.path.join(workspace, "ConvertAmls")
         amlsource = os.path.join(workspace, "AML")
         ok = preprocess(amlsource, sourcefullpath, workfolder)     
         if not ok: 
