@@ -10,7 +10,7 @@ from __future__ import print_function
 import os, sys
 import arcpy
 from arcpy import mapping as MAP
-from arc_utilities import aprint, eprint, get_dataframe, get_layer
+from arc_utilities import aprint, eprint, GetDataframe, GetLayer
 from ormapnum import ormapnum
 import mapnum
 
@@ -19,8 +19,8 @@ import mapnum
 # NB, force string into lower case to make sure it works in Windows
 configpath = os.path.dirname(__file__)
 if not configpath: configpath = os.getcwd()
-configpath=configpath.replace("Toolbox","Config")
-#print("__file__", __file__, "configpath", configpath)
+configpath=os.path.normcase(configpath).replace("toolbox","config")
+print("__file__=%s configpath=%s" % (__file__, configpath))
 sys.path.append(configpath)
 
 import ORMAP_LayersConfig as ORMapLayers
@@ -30,7 +30,7 @@ print(ORMapLayers.__file__, ORMapPageLayout.__file__)
 def set_definition_query(mxd, df, layername, query):
     """ Set the definition query on a layer. """
     if df:
-        layer = get_layer(mxd, df, layername)
+        layer = GetLayer(mxd, df, layername)
         if not layer: return False
         try:
             layer.definitionQuery = query
@@ -74,8 +74,8 @@ if __name__ == "__main__":
     dfname = ORMapLayers.MainDF
     layername = ORMapLayers.MainLayers[0][0]
     mxd = MAP.MapDocument(mxdname)
-    df = get_dataframe(mxd, dfname)
-    layer = get_layer(mxd, df, layername)
+    df = GetDataframe(mxd, dfname)
+    layer = GetLayer(mxd, df, layername)
     
     aprint("layer.dataSource=%s" % layer.dataSource)
     

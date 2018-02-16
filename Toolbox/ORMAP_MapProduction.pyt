@@ -40,6 +40,6 @@ if __name__ == "__main__":
         print('  ',tool.label)
         print('   description:', tool.description)
         for param in tool.getParameterInfo():
-            print('    ',param.name,':',param.displayName)
+            print('    ', param.name, ':', param.displayName)
 
 # That's all!

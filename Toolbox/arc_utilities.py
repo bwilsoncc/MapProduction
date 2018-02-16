@@ -4,33 +4,33 @@
 #  Written by bwilson for Clatsop County GIS
 #
 from __future__ import print_function
-import sys
-from arcpy import AddMessage, AddError, Exists, Delete_management, ListFields
+import os
+import arcpy
 from arcpy import mapping as MAP
 
 def aprint(msg):		
     """ Print a message. Execution does not stop. """		
     #print(msg)		    # not needed with visual studio
     #sys.stdout.flush()		
-    AddMessage(msg)		
+    arcpy.AddMessage(msg)		
 		
 def eprint(msg):		
     """ Print a message. Execution will stop when you use this one. """		
     #print("ERROR:",msg) # not needed with visual studio	
-    AddError(msg)	
+    arcpy.AddError(msg)	
 
 def DeleteFC(fc):
     """ Delete a feature class if it exists. """
     msg = "Feature class '%s'" % fc
-    if Exists(fc):
-        Delete_management(fc)
+    if arcpy.Exists(fc):
+        arcpy.Delete_management(fc)
         msg += " deleted."
     aprint(msg)
     return	
 		
 def ListFieldNames(fc):
     """ Return a list of the names of the fields in a feature class. """
-    return [f.name for f in ListFields(fc)]
+    return [f.name for f in arcpy.ListFields(fc)]
 
 def GetDataframe(mxd, dfname):		
     """ Return the named dataframe object from an MXD. """		
@@ -50,17 +50,44 @@ def GetLayer(mxd, df, layername):
         print("Can't find layer \"%s\"/\"%s\"." % (df.name, layername))		
     return layer
  
-if __name__ == "__main__":
+# ---------------------------------------------------------------------
+def dump_fields():
+    with open("s.csv","w") as fp:
+        for t in [
+                ("taxmapan", "taxmapanno"),
+                ("taxlotan", "taxlotanno"),
+                ("taxcodan", "taxcodanno"),
+                ]:
+            for ws in t:
+                print("workspace:", ws)
+                arcpy.env.workspace = os.path.join("C:\\GeoModel\\Clatsop\\Workfolder\\t4-6", ws)
+                for fc in ["annotation.igds", "arc", "point"]:
+                    if arcpy.Exists(fc):
+                        l = ListFieldNames(fc)
+                        ls = [str(item) for item in l]
+                        rval = "%s, %s" % (ws, fc)
+                        for item in ls:
+                            rval += ", %s" %item
+                        print(rval)
+                        rval += "\n"
+                        fp.write(rval)
 
-    mxdname = "TestMap.mxd" # Often set to "CURRENT"
+    return
+
+if __name__ == "__main__":
+    
+    dump_fields()
 
     arcpy.env.workspace = "C:\\GeoModel\\MapProduction\\ORMAP_Clatsop_Schema.gdb\\TaxlotsFD"
-    l = ListFieldNames("Taxlot")
-    print(l)
+    if arcpy.Exists("Taxlot"):
+        l = ListFieldNames("Taxlot")
+        print(l)
       		
-    aprint("Unit test aprint")
-    eprint("Unit test eprint")      
+        aprint("Unit test aprint")
+        eprint("Unit test eprint")      
 
+    mxdname = "TestMap.mxd" # Often set to "CURRENT"
+        
     dfname = "MapView"
     layername = "MapIndex"
     mxd = MAP.MapDocument(mxdname)

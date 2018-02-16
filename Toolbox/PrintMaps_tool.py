@@ -9,7 +9,7 @@ import os
 import arcpy
 from arcpy import mapping as MAP
 import printMaps
-from ormap_utilities import ORMapLayers, get_dataframe, get_layer, list_ormapnumbers
+from ormap_utilities import ORMapLayers, GetDataframe, GetLayer, list_ormapnumbers
 
 class PrintMaps(object):
     """This class has the methods you need to define
@@ -67,12 +67,12 @@ class PrintMaps(object):
                                      )
         map_number.filter.type = "ValueList"
         map_number.filter.list = []
-
+        mxd_filepath = ""
         try:
             mxd = MAP.MapDocument(self.mxdname)
-            df = get_dataframe(mxd, ORMapLayers.MainDF)
+            df = GetDataframe(mxd, ORMapLayers.MainDF)
 
-            layer = get_layer(mxd, df, ORMapLayers.MapIndexLayer[0])
+            layer = GetLayer(mxd, df, ORMapLayers.MapIndexLayer[0])
             # Using the datasource instead of the layer avoids problems if there is a definition query.
             map_number.filter.list = list_ormapnumbers(layer.dataSource, ORMapLayers.ORMapNumberField)
 

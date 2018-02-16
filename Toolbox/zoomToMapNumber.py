@@ -11,7 +11,7 @@ from arcpy import mapping as MAP
 import os, sys
 import datetime
 from ormap_utilities import ORMapLayers, ORMapPageLayout, aprint, eprint, \
-                            get_dataframe, get_layer, set_definition_query
+                           GetDataframe, GetLayer, set_definition_query
 from ormapnum import ormapnum
 from cancellations import read_cancelled, make_table
 
@@ -218,7 +218,7 @@ def update_locator_maps(mxd, orm, mapnumber):
             (ORMapLayers.SectionDF,  ORMapLayers.SectionLayers,  ORMapLayers.SectionExtentLayer,  ORMapLayers.SectionScale),
             (ORMapLayers.QSectionDF, ORMapLayers.QSectionLayers, ORMapLayers.QSectionExtentLayer, ORMapLayers.QSectionScale),
             ]:
-        df = get_dataframe(mxd, dfname)
+        df = GetDataframe(mxd, dfname)
         for layername, qd in layers:
             query = ""
             if qd: 
@@ -226,7 +226,7 @@ def update_locator_maps(mxd, orm, mapnumber):
             set_definition_query(mxd, df, layername, query) 
         if extlayername:
             # Pan and zoom are optional in locator maps.
-            ext_layer = get_layer(mxd, df, extlayername)
+            ext_layer = GetLayer(mxd, df, extlayername)
             df.extent = ext_layer.getExtent()
             if scale: df.scale  = scale
 
@@ -495,9 +495,9 @@ def update_page_layout(mxd, mapnumber):
     except AttributeError:
         maindf_name = "MainDF"
 
-    maindf = get_dataframe(mxd, maindf_name)
+    maindf = GetDataframe(mxd, maindf_name)
 
-    mapindex_layer = get_layer(mxd, maindf, ORMapLayers.MapIndexLayer[0])
+    mapindex_layer = GetLayer(mxd, maindf, ORMapLayers.MapIndexLayer[0])
     if not mapindex_layer: 
         # can't function without an index layer!
         return
@@ -530,17 +530,17 @@ def update_page_layout(mxd, mapnumber):
     # MapIndex has to have the relative scale not the "1 inch = N feet" scale
     # I can fix there here, it might be better??
     
-    lookup_scale = { 10   :   120,
-                     20   :   240,
-                     30   :   300,
-                     40   :   480,
-                     50   :   600,
-                     60   :   720, 
-                     100  :  1200, 
-                     200  :  2400, 
-                     400  :  4800, 
+    lookup_scale = {   10 :   120,
+                       20 :   240,
+                       30 :   300,
+                       40 :   480,
+                       50 :   600,
+                       60 :   720, 
+                      100 :  1200, 
+                      200 :  2400, 
+                      400 :  4800, 
                      2000 : 24000,
-                     }
+                   }
     try:
         scale = lookup_scale[mapindex_scale]
     except KeyError:
