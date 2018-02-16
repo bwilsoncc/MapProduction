@@ -8,7 +8,7 @@ Created on Tue Dec 19 15:43:00 2017
 from __future__ import print_function
 import arcpy
 
-__version__ = "2"
+__version__ = "3"
 
 # Import all the tool classes that will be included in this toolbox.
 from ZoomToMapNumber_tool import ZoomToMapNumber
