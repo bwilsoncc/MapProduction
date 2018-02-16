@@ -65,28 +65,28 @@ def import_anno(annolayer, outputfc, linkedfc):
         
     return success
 
-def merge_anno(src,dst):
-    """Merge annotation from src to dst fc.
-    'src' can be either one fc or a list.
+def merge_anno(srclist, dst):
+    """Merge annotation from srclist to dst fc.
+    'srclist' can be either one fc or a list.
     NB Can't use coverage annotation as a source, has to be a fc in the same database as dest.
     """
     success = True
     reference_scale = 1200.0
     try: 
-        logging.info("merge_anno(%s, %s)" % (src,dst))
-        arcpy.AppendAnnotation_management(src, dst, reference_scale, 
+        logging.info("merge_anno(%s, %s)" % (srclist, dst))
+        arcpy.AppendAnnotation_management(srclist, dst, reference_scale, 
                                          "CREATE_CLASSES", 
                                          "NO_SYMBOL_REQUIRED", 
                                          "AUTO_CREATE", "AUTO_UPDATE")
         # I should delete the source fc's here, right? Otherwise we end up with about 100 extra fc's.
-        if isinstance(src,list):
-            for s in src:
+        if isinstance(srclist,list):
+            for s in srclist:
                 arcpy.Delete_management(s)
         else:
-            arcpy.Delete_management(src)
+            arcpy.Delete_management(srclist)
 
     except Exception as e:
-        msg = "merge_anno(%s, %s), \"%s\"" % (src, dst, e)
+        msg = "merge_anno(%s, %s), \"%s\"" % (srclist, dst, e)
         aprint(msg)
         logging.error(msg)
         success = False
