@@ -8,9 +8,55 @@
 from __future__ import print_function
 import arcpy
 import os, logging
+import re
 from Toolbox.arc_utilities import aprint, eprint, ListFieldNames, DeleteFC
 
 # ========================================================================
+
+# Use this to fix AnnotationClassId field
+# remember to import re
+
+def fixannoclass(currentclassid, level, m):
+    """ this code is used as an ArcMap "Field Calculator" since we can't run it from a script. """
+    if currentclassid >= 0 and currentclassid <= 3:
+        # current classid is acceptable
+        return currentclassid
+    if level >= 0 and level <= 3:
+        # level is acceptable too
+        return level
+    # we have to cook something reasonable up from mapnumber
+    mapnum = m.strip()
+    classid = 3               #       1"=2000'
+    if mapnum:
+        # we have a mapnumber but current classid is unmutual so pick a new one
+        mo = re.search(r'(\d)\.(\d+)\.?(\d*)([a-d]?)([a-d]?)', mapnum, flags=re.IGNORECASE)
+        try:
+            if mo.group(5):
+                classid = 0    # QQ   1"=100'
+            elif mo.group(4):
+                classid = 1    #  Q   1"=200'
+            elif mo.group(3):
+                classid = 2    #  S   1"=400'
+        except Exception as e:
+            print(e)
+            pass
+    return classid
+
+def check_annoscale(fc):
+    fields = ["AnnotationClassID", "MAPNUMBER", "level"]
+    count = 0
+    # Can't use an Insert or UpdateCursor on an annotation featureclass
+    with arcpy.da.SearchCursor(fc, fields) as cursor:
+        for row in cursor:
+            mapnum  = row[1]
+            level   = row[2]
+            classid = fixannoclass(row[0], level, mapnum)
+            if classid == row[2]: 
+                count += 1
+                continue
+            print("%d : %10s %2d %2d" % (row[0], row[1], row[2], classid))
+    print(count)
+    pass
 
 def fix_fontsize(outputfc):
     logging.info("fix_fontsize(%s)" % outputfc)
@@ -189,12 +235,8 @@ def convert_anno(mxd, destination,  target, d_anno):
     return warning
 
 # ========================================================================
-        
-if __name__ == "__main__":
 
-    workfolder = "C:\\GeoModel\\Clatsop\\Workfolder"
-    target = "t8-9"
-    
+def __import_anno(workfolder, target):
     print("Importing annotation...")
     
     # "merge" means add annotation to existing fc
@@ -212,6 +254,18 @@ if __name__ == "__main__":
         fix_caret(outputfc)
         fix_fontsize(outputfc)
 
+        
+if __name__ == "__main__":
+
+    workfolder = "C:\\GeoModel\\Clatsop\\Workfolder"
+    target = "t8-9"
+    
+    gdb = "ORMAP_Clatsop.gdb"
+    fc = os.path.join(workfolder, gdb, "TaxlotsFD\\TaxCodeAnno")
+    check_annoscale(fc)
+
+    #__import_anno(workfolder, target)
+    
     print("Tests completed.")
 
 # That's all!
