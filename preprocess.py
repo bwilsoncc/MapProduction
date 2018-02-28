@@ -18,6 +18,7 @@ from shutil import copyfile, copytree, rmtree
 import arcpy
 from arcpy import mapping as MAP
 from Toolbox.arc_utilities import aprint, eprint
+from Toolbox.ormapnum import ormapnum
 
 MYNAME  = os.path.splitext(os.path.split(__file__)[1])[0]
 LOGFILE = MYNAME + ".log"
@@ -75,7 +76,7 @@ def run_aml(amlsource, sourcefolder):
         except Empty:
             retcode = p.poll()
             if retcode != None:
-                #print("Return code from Arc was", retcode)
+                logging.debug("Return code from Arc was %s" % retcode)
                 countdown=0
             else:
                 if countdown < 10: print(countdown)
@@ -104,7 +105,7 @@ def run_aml(amlsource, sourcefolder):
         # Still running
         msg = "Terminating process %d and its children." % p.pid
         logging.error(amlsource + ":" + msg)
-        print(msg)
+        aprint(msg)
         # Can't do simple terminate because "arc" starts subprocesses like "arcedit".
         # /T option causes child processes to be taken down too.
         # /F means "force".
@@ -113,9 +114,46 @@ def run_aml(amlsource, sourcefolder):
 
     return ok
 
+def post01(workfolder):
+    """ Code to run after stage 01.
+    Fix taxbound ormapnum, the AML code to create ormapnum is broken for detail maps. """
+
+    fc = os.path.join(workfolder, "taxbound/label")
+
+    logging.info("post01(%s)" % fc)
+
+    fields = ["ORMAPNUM", "PageName", "MAPSUFNUM"]
+    ORMAPNUM  = 0
+    PAGENAME  = 1
+    MAPSUFNUM = 2
+
+    orm = ormapnum()
+    
+    with arcpy.da.UpdateCursor(fc, fields) as cursor:
+        for row in cursor:
+            o = row[ORMAPNUM]
+            if not o:
+                # mysteriously, some ormapnumbers are just empty
+                cursor.deleteRow()
+                continue
+
+        # repair detail map number
+            if o[-1] == 'D':
+                o += "%03d" % row[MAPSUFNUM]
+                row[ORMAPNUM] = orm.ormapnumber 
+                logging.info("Repaired %s" % row[ORMAPNUM])
+
+        # calc page number from ormapnum
+            orm.unpack(o)
+            row[PAGENAME] = orm.shorten()
+            cursor.updateRow(row)
+            pass
+    return
+
 def preprocess(codefolder, sourcefolder, workfolder):
     ok = True
     l_aml = [
+        ("01-MakeTaxbound.aml",post01),
         "01-MakeMapIndex.aml",
         "02-Maketaxcode.aml",
         "03-MakeTaxlot.aml",
@@ -133,22 +171,31 @@ def preprocess(codefolder, sourcefolder, workfolder):
     saved = os.getcwd()
 
     for aml in l_aml:
+        pyfun = None
+        if type(aml) is tuple:
+            pyfun = aml[1]
+            aml = aml[0]
+
         # Clear out the remnants of any previous conversion
+        # I do this manually
         #rmtree(workfolder, ignore_errors=True)
 
         if not os.path.exists(workfolder): 
             os.mkdir(workfolder)
-        os.chdir(workfolder)
+
+        os.chdir(workfolder) # This is the AML workspace
 
         # Use the existence of a WAT file as evidence we don't need to rerun a step
         baseaml,ext = os.path.splitext(aml)
         wat = baseaml + ".wat"
         if not os.path.exists(wat):
-            aprint("\t"+aml)
+            logging.info(aml)
             if not run_aml(os.path.join(codefolder, aml), sourcefolder):
                 ok = False
+            elif pyfun:
+                pyfun(workfolder)
         else:
-            aprint("Skipping %s because .WAT exists." % (baseaml))
+            logging.info("Skipping %s because .WAT exists." % (baseaml))
 
     os.chdir(saved)
     
@@ -160,32 +207,37 @@ def preprocess(codefolder, sourcefolder, workfolder):
 # =============================================================================
 if __name__ == "__main__":
 
+    MYNAME  = os.path.splitext(os.path.split(__file__)[1])[0]
+    LOGFILE = MYNAME + ".log"
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(filename=LOGFILE, level=logging.DEBUG, format=FORMAT)
+
     workspace = "C:\\GeoModel\\Clatsop"
     source_folder = os.path.join(workspace, "Source")
 
     # Do everything  
     #sources = [ tfolder for tfolder in glob(os.path.join(source_folder,"t[4-9]-*"))]
     # Uncomment to select one township for testing
-    sources = [ tfolder for tfolder in glob(os.path.join(source_folder, "t8-9"))]
+    sources = [ tfolder for tfolder in glob(os.path.join(source_folder, "t6-10"))]
     # ...or one row of townships
     #sources = [ tfolder for tfolder in glob(os.path.join(source_folder,"t4-[67]*"))]
     # ...or with an empty list, you can test the code outside the "for" loop...
     #sources = []
 
+    logging.info("preprocess(%s)" % sources)
     ok = True
 
     for sourcefullpath in sources:
         sourcepath, township = os.path.split(sourcefullpath)
         workfolder = os.path.join(workspace, "Workfolder", township)
 
-        msg = "Preprocessing %s" % township
+        msg = "Preprocessing township %s" % township
         logging.info(msg)
-        aprint(msg)
            
         amlsource = os.path.join(workspace, "AML")
         ok = preprocess(amlsource, sourcefullpath, workfolder)     
         if not ok: 
-            aprint("Preprocessing completed with errors.")
+            logging.warning("Preprocessing completed with errors.")
 
     if ok: 
         print("All done!")
