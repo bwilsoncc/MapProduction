@@ -76,7 +76,7 @@ def run_aml(amlsource, sourcefolder):
         except Empty:
             retcode = p.poll()
             if retcode != None:
-                logging.debug("Return code from Arc was %s" % retcode)
+                logging.debug("Arc returned : %s" % retcode)
                 countdown=0
             else:
                 if countdown < 10: print(countdown)
@@ -135,11 +135,13 @@ def post01(workfolder):
             if not o:
                 # mysteriously, some ormapnumbers are just empty
                 cursor.deleteRow()
+                logging.debug("Deleted empty row.")
                 continue
 
         # repair detail map number
             if o[-1] == 'D':
                 o += "%03d" % row[MAPSUFNUM]
+                orm.unpack(o)
                 row[ORMAPNUM] = orm.ormapnumber 
                 logging.info("Repaired %s" % row[ORMAPNUM])
 
