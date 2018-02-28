@@ -15,12 +15,11 @@ from ormap_utilities import ORMapLayers, ORMapPageLayout, aprint, eprint, \
 from ormapnum import ormapnum
 from cancellations import read_cancelled, make_table
 
-mapindex_fields = [ "MapScale", "MapNumber", "CityName", "OrMapNum", "SHAPE@", ]
+mapindex_fields = [ "MapScale", "MapNumber", "OrMapNum", "SHAPE@", ]
 MAPSCALE  = 0
 MAPNUMBER = 1
-CITYNAME  = 2
-ORMAPNUM  = 3
-SHAPE     = 4
+ORMAPNUM  = 2
+SHAPE     = 3
 
 cancelledfields  = [ "Taxlot", ]
 TAXLOT = 0
@@ -232,41 +231,8 @@ def update_locator_maps(mxd, orm, mapnumber):
 
     return
 
-def build_titles(orm, s_cityname):
-    """ Build text strings usable for short and long titles and scale text.
-    Return them as a tuple. """
-    
-    shortmaptitle = '%s.%s' % (orm.township, orm.range)
-    if orm.section>0: shortmaptitle += ".%d" % orm.section
-    if orm.quarter != '0':
-        shortmaptitle += orm.quarter
-        if orm.quarterquarter != '0': shortmaptitle += orm.quarterquarter
-    if s_cityname.strip():
-        shortmaptitle += "\n" + s_cityname.replace(",","\n")
 
-    townrng = "T" + str(orm.township) + orm.township_frac + orm.township_dir + ' ' + \
-         "R" + str(orm.range)    + orm.range_frac    + orm.range_dir    + " WM"
-
-    longmaptitle = townrng
-    if str(orm.section):
-        qqtext = orm.qqtext()
-        if qqtext:
-            l1 = qqtext + " SEC." + str(orm.section)
-        else:
-            l1 = "SECTION " + str(orm.section)   
-
-        longmaptitle = l1 + ' ' + townrng
-        try:
-            # If there is a "map suffix" then split the title on 2 lines.
-            s_sfx = {'D':'DETAIL', 'S':'SUPPLEMENTAL', 'T':'DETAIL'}[orm.mapsuffixtype]
-            longmaptitle = l1 + '\n' + townrng + " %s %d" % (s_sfx, orm.mapsuffixnumber)
-        except KeyError:
-            pass
-
-    print("\"%s\" \"%s\"" % (shortmaptitle, longmaptitle))
-    return shortmaptitle, longmaptitle
-
-def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_cityname):
+def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale):
     
     # Allowing changes to the page elements based on settings here
     # would allow a custom set up for each map page, by loading settings
@@ -339,9 +305,7 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
     #MISC Relative Map Distances
 #    CountyNameDist = ORMapPageLayout.CountyNameDist
 #    MapScaleDist = ORMapPageLayout.MapScaleDist
-
-    (shorttitle, longtitle) = build_titles(orm, s_cityname)
-    
+  
     # Legacy: I don't use this, I let ArcMap set up scale text.
     scale_text   = "1\" = %d'" % (int(s_mapscale) / 12)
 
@@ -351,12 +315,12 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
             elm.text = s_mapnum
         
         elif elm.name.lower() == "mainmaptitle":
-            elm.text = longtitle
+            elm.text = orm.longmaptitle()
             #elm.elementPositionX = TitleX
             #elm.elementPositionY = TitleY
         
         elif elm.name.lower() == "smallmaptitle":
-            elm.text = longtitle
+            elm.text = orm.longmaptitle()
                         
         elif elm.name == "MainMapScale":
             elm.text = scale_text
@@ -364,15 +328,15 @@ def update_page_elements(mxd, df, orm, mapnumber_query, s_mapnum, s_mapscale, s_
 #            elm.elementPositionY = TitleY - MapScaleDist
 
         elif elm.name == "UpperLeftMapNum":
-            elm.text = shorttitle
+            elm.text = orm.shortmaptitle()
 
         elif elm.name == "UpperRightMapNum":
-            elm.text = shorttitle
+            elm.text = orm.shortmaptitle()
             #elm.elementPositionX = URCornerNumX
             #elm.elementPositionY = URCornerNumY
 
         elif elm.name == "LowerLeftMapNum":
-            elm.text = shorttitle
+            elm.text = orm.shortmaptitle()
 
         elif elm.name == "LowerRightMapNum":
             elm.text = shorttitle
@@ -510,7 +474,6 @@ def update_page_layout(mxd, mapnumber):
         for row in cursor:
             mapindex_mapnumber = row[MAPNUMBER]
             mapindex_ormapnum  = row[ORMAPNUM]
-            mapindex_cityname  = row[CITYNAME]
             mapindex_scale     = row[MAPSCALE]
             count += 1
             
@@ -518,7 +481,7 @@ def update_page_layout(mxd, mapnumber):
         eprint("Query \%s\" matched %d records. FIX THIS." % (mapindex_query, count))
         if count == 0: return
 
-    aprint("Read from index file: %s %s %s %s" % (mapindex_mapnumber, mapindex_ormapnum, mapindex_cityname, mapindex_scale))
+    aprint("Read from index file: %s %s %s" % (mapindex_mapnumber, mapindex_ormapnum, mapindex_scale))
     mapnumber_query = get_mapnumber_query(mapindex_mapnumber)
     set_main_definition_queries(mxd, maindf, orm, mapindex_mapnumber, mapindex_scale, mapnumber_query)
 
@@ -551,7 +514,7 @@ def update_page_layout(mxd, mapnumber):
 #    table_defquery = readtable(mxd, maindf, ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE, "*", mapnumber_query)
 #    if not len(table_defquery): aprint("Unable to load optional DefCustomTable \"%s\". Query: %s" % (ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE, mapnumber_query))
 
-    update_page_elements(mxd, maindf, orm, mapindex_query, mapindex_mapnumber, scale, mapindex_cityname)
+    update_page_elements(mxd, maindf, orm, mapindex_query, mapindex_mapnumber, scale)
     update_locator_maps(mxd, orm, mapindex_mapnumber)
 
     arcpy.RefreshActiveView()

@@ -17,7 +17,7 @@ from arcpy import mapping as MAP
 
 from Toolbox.arc_utilities import aprint, eprint
 from update_acres import update_acres
-from coverage_to_geodatabase import import_all_features, fix_mapscales, make_polygons
+from coverage_to_geodatabase import import_all_features, fix_mapscales, make_polygons, update_mapindex
 from coverage_to_anno import convert_anno, merge_anno, fix_anno
 from preprocess import preprocess
 
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     # Do everything  
     archives = [ tfolder for tfolder in glob(os.path.join(archive,"t[4-9]-*"))]
     # Uncomment to select one township for testing
-    #archives = [ tfolder for tfolder in glob(os.path.join(archive,"t8-[89]"))]
+    archives = [ tfolder for tfolder in glob(os.path.join(archive,"t6-*"))]
     # ...or one row of townships
     #archives = [ tfolder for tfolder in glob(os.path.join(archive,"t5-*"))]
     # ...or with an empty list, you can test the code outside the "for" loop...
@@ -211,9 +211,12 @@ if __name__ == "__main__":
 
             saved = arcpy.env.workspace
             arcpy.env.workspace = os.path.join(merged_gdb, "TaxlotsFD")
-            make_polygons("MapIndexLines", "MapIndexPoints", "MapIndex")
             make_polygons("TaxcodeLines", "TaxcodePoints", "Taxcode")
             make_polygons("TaxlotLines", "TaxlotPoints", "Taxlot")
+
+            make_polygons("MapIndexLines", "MapIndexPoints", "MapIndex")
+            update_mapindex("MapIndex") # add fields and populate them
+
             arcpy.env.workspace = saved
 
         # Copy the supporting MXD's into our workspace

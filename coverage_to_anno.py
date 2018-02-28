@@ -213,10 +213,11 @@ def convert_anno(mxd, destination,  target, d_anno):
             continue
 
         dstfc =  os.path.join(destination, outputname)
-
-        template = os.path.join(destination, "AnnotationFD\\AnnoTEMPLATE")
-        if templated and not arcpy.Exists(dstfc):
-            arcpy.FeatureClassToFeatureClass_conversion(template, destination, outputname)
+        
+        # In the recent past I apparently decided I do not need this step?
+        #template = os.path.join(destination, "AnnotationFD\\AnnoTEMPLATE")
+        #if templated and not arcpy.Exists(dstfc):
+        #    arcpy.FeatureClassToFeatureClass_conversion(template, destination, outputname)
 
         # copy into a tmp space then merge
         tmpfc  = dstfc + "_" + target

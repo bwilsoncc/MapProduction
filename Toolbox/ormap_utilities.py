@@ -2,7 +2,7 @@
 """
 Created on Wed Dec 20 10:41:09 2017
 
-A collection of utilities to help with the map production toolbox.
+A collection of utilities to help the map production.
 
 @author: bwilson
 """
@@ -50,13 +50,13 @@ def list_mapnumbers(fc, mapnum_fieldname):
                 d_val[mn.number] = row[0]
     return [d_val[k] for k in sorted(d_val)]
  
-def list_ormapnumbers(fc, mapnum_fieldname):
+def list_ormapnumbers(featureclass, ormapnum_fieldname):
     """Return a sorted list of the shortened contents of ormapnumber field in a featureclass. 
     The shortened version is similar to the "mapnum" field but has the map suffix appended if it exists,
     for example "8.10.8.DC D1" indicates detail map #1 """
     d_val = {} # use a dict to get rid of duplicates
     orm = ormapnum()
-    with arcpy.da.SearchCursor(fc, [mapnum_fieldname]) as cursor:
+    with arcpy.da.SearchCursor(featureclass, [ormapnum_fieldname]) as cursor:
         for row in cursor:
             if row[0]:
                 orm.unpack(row[0])
@@ -64,13 +64,30 @@ def list_ormapnumbers(fc, mapnum_fieldname):
 
     return [d_val[k] for k in sorted(d_val)]
  
+def dict_ormapnumbers(featureclass, ormapnum_fieldname):
+    """Return a dictionary indexed by OID that contains the sorted index number (pagenumber)"""
+    d_val = {} # use a dict to get rid of duplicates
+    with arcpy.da.SearchCursor(featureclass, [ormapnum_fieldname, "OID@"]) as cursor:
+        for row in cursor:
+            if not row[0]: continue
+            d_val[row[0]] = row[1]
+
+    d_oid = {}
+    pagenumber = 1
+    for k in sorted(d_val):
+        oid = d_val[k]
+        d_oid[oid] = pagenumber
+        pagenumber += 1
+
+    return d_oid
+ 
 # =============================================================================
 if __name__ == "__main__":
     # unit tests
     
     # In real life this will normally be "CURRENT".
-    mxdname = "TestMap.mxd"
-    
+    mxdname = "c:/GeoModel/MapProduction/Toolbox/TestMap.mxd"
+
     dfname = ORMapLayers.MainDF
     layername = ORMapLayers.MainLayers[0][0]
     mxd = MAP.MapDocument(mxdname)
@@ -79,12 +96,16 @@ if __name__ == "__main__":
     
     aprint("layer.dataSource=%s" % layer.dataSource)
     
-    aprint("mapnumbers")
-    l = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
-    for m in l: aprint(m)
+    aprint("ormapnumbers dict")
+    d = dict_ormapnumbers(layer.dataSource, ORMapLayers.ORMapNumberField)
+    for m in d: aprint("%s %s" % (m,d[m]))
 
     aprint("ormapnumbers")
     l = list_ormapnumbers(layer.dataSource, ORMapLayers.ORMapNumberField)
+    for m in l: aprint(m)
+
+    aprint("mapnumbers")
+    l = list_mapnumbers(layer.dataSource, ORMapLayers.MapNumberField)
     for m in l: aprint(m)
 
     del mxd

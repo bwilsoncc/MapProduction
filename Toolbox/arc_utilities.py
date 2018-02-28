@@ -13,7 +13,7 @@ def aprint(msg):
     #print(msg)		    # not needed with visual studio
     #sys.stdout.flush()		
     arcpy.AddMessage(msg)		
-		
+
 def eprint(msg):		
     """ Print a message. Execution will stop when you use this one. """		
     #print("ERROR:",msg) # not needed with visual studio	
@@ -27,7 +27,22 @@ def DeleteFC(fc):
         msg += " deleted."
     aprint(msg)
     return	
-		
+
+def AddField(fc, fieldname, fieldtype, fieldlen=20):
+    """ Add a field to a featureclass if it does not already exist.
+    fc         name of featureclass
+    fieldname  name of field to add
+    fieldttype type of field (string) {TEXT|LONG}
+    fieldlen   optional length of text field, defaults to 20
+    """
+    rval = True
+    try:
+        arcpy.AddField_management(fc, fieldname, fieldtype, field_length = fieldlen)
+    except Exception as e:
+        print(e)
+        rval = False
+    return rval
+
 def ListFieldNames(fc):
     """ Return a list of the names of the fields in a feature class. """
     return [f.name for f in arcpy.ListFields(fc)]
@@ -40,7 +55,7 @@ def GetDataframe(mxd, dfname):
     except Exception as e:		
         aprint("Dataframe not found. Make sure it is named '%s'. \"%s\"" % (dfname,e))		
     return df		
-		
+
 def GetLayer(mxd, df, layername):
     """ Return the named layer from an MXD. """
     layer = None		
@@ -82,19 +97,25 @@ if __name__ == "__main__":
     if arcpy.Exists("Taxlot"):
         l = ListFieldNames("Taxlot")
         print(l)
-      		
+
         aprint("Unit test aprint")
         eprint("Unit test eprint")      
 
+    arcpy.env.workspace = "C:\\GeoModel\\Clatsop\\Workfolder\\ORMAP_Clatsop.gdb\\TaxlotsFD"
+    if arcpy.Exists("MapIndex"):
+        AddField("MapIndex", "PageNumber", "LONG")
+        AddField("MapIndex", "PageName",   "TEXT", fieldlen=50)
+        l = ListFieldNames("MapIndex")
+        print(l)
+
     mxdname = "TestMap.mxd" # Often set to "CURRENT"
-        
-    dfname = "MapView"
-    layername = "MapIndex"
-    mxd = MAP.MapDocument(mxdname)
-    df = GetDataframe(mxd, dfname)
-    layer = GetLayer(mxd, df, layername)
-    aprint("layer.dataSource=%s"%layer.dataSource)		
-         
-    del mxd
-    
+    if os.path.exists(mxdname):
+        dfname = "MapView"
+        layername = "MapIndex"
+        mxd = MAP.MapDocument(mxdname)
+        df = GetDataframe(mxd, dfname)
+        layer = GetLayer(mxd, df, layername)
+        aprint("layer.dataSource=%s"%layer.dataSource)
+        del mxd
+  
 # That's all

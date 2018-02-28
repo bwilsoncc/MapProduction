@@ -8,7 +8,9 @@
 from __future__ import print_function
 import arcpy
 import os, logging
-from Toolbox.arc_utilities import aprint, eprint, ListFieldNames, DeleteFC
+from Toolbox.arc_utilities import aprint, eprint, ListFieldNames, DeleteFC, AddField
+from ormapnum import ormapnum
+from ormap_utilities import dict_ormapnumbers
 
 # ========================================================================
 
@@ -92,17 +94,21 @@ def import_all_features(source_folder, geodatabase, merge=False):
     return True
 
 def make_polygons(infc, labelfc, outfc):
+    """ Create polygons from a feature class.
+    infc      input feature class (can be lines or polygons)
+    labelfc   point feature class containing attributes for outfc
+    outfc     where to write polygons """
 
     # Notes on "FeatureToPolygon"
     # If you use the "NO ATTRIBUTES" default, then only the shapes are move from the input to the generated polygon feature class.
     # If you use "ATTRIBUTES" the attributes are copied.
-    # If you use "ATTRIBUTES" and a polygon or line feature class AND point feature class,
+    # If you use "ATTRIBUTES" and a polygon or line feature class AND a point feature class,
     #   the attributes from the points are copied to the output (the poly/line attributes are lost). 
     # If there are multiple points inside a new polygon feature it picks attributes from one randomly. 
     # Input features can be lines or polygons, so you can think of it as a way of just transferring the attributes if you have input polygons.
     # The blank "" arg is a tolerance, if you have sloppy input you can use this to close the polygons.
     #
-    # When I ran it as a standalone tool in ArcMap I got a background server error, I had to run it in foreground.
+    # NB when I ran it as a standalone tool in ArcMap I got a background server error, I had to run it in foreground.
 
     # I wish that ESRI was a bit more consistent in what DOES and DOES NOT support the workspace environment variable.
 
@@ -118,6 +124,42 @@ def make_polygons(infc, labelfc, outfc):
             os.path.join(workspace, labelfc))
     except Exception as e:
         print(e)
+
+    return
+
+def update_mapindex(fc):
+    """ Update the mapindex fc by adding and populating fields.
+    pagename      a unique page name to identify the row including MapNumber and detail page number
+    pagenumber    a long that is properly sorted by pagename
+    longmaptitle  a string that can be used on maps as the "small map title"
+    """
+    fields = ["ORMapNum", "longmaptitle", "OID@"]
+    ORMAPNUM = 0
+    LONGTTL  = 1
+    OID      = 2
+    mapindexfc = "MapIndex"
+    if arcpy.Exists(mapindexfc):
+        AddField(mapindexfc, "LongMapTitle", "TEXT", fieldlen=50)
+
+        orm = ormapnum()
+
+        # Get page numbers
+        #d_pagenum = dict_ormapnumbers(fc, "OrMapNum")
+
+        with arcpy.da.UpdateCursor(fc, fields) as cursor:
+            for row in cursor:
+#                oid = row[OID]
+                o   = row[ORMAPNUM]
+
+# I don't really need to fill in PAGENUM because I can use ORMapNum directly instead
+#                try:
+#                    row[PAGENUM]  = d_pagenum[oid]
+#                except KeyError:
+#                    pass
+
+                orm.unpack(o)
+                row[LONGTTL]  = orm.longmaptitle()
+                cursor.updateRow(row)
 
     return
 
@@ -202,19 +244,21 @@ def fix_mapscales(gdb, fclist=None):
 if __name__ == "__main__":
 
     workfolder = "C:\\GeoModel\\Clatsop\\Workfolder"
-    target = "t8-9"
+    target = "t6-10"
     
     sourcedir = os.path.join(workfolder, target)
     geodatabase = os.path.join(workfolder, "ORMAP_Clatsop.gdb")
 
-    print("Importing features...")
-    import_all_features(sourcedir, geodatabase)
+    #print("Importing features...")
+    #import_all_features(sourcedir, geodatabase)
 
     saved = arcpy.env.workspace
-    arcpy.env.workspace = os.path.join(geodatabase,  "TaxlotsFD")
+    arcpy.env.workspace = os.path.join(geodatabase, "TaxlotsFD")
     make_polygons("MapIndexLines", "MapIndexPoints", "MapIndex")
-    make_polygons("TaxcodeLines",  "TaxcodePoints",  "Taxcode")
-    make_polygons("TaxlotLines",   "TaxlotPoints",   "Taxlot")
+    #make_polygons("TaxcodeLines",  "TaxcodePoints",  "Taxcode")
+    #make_polygons("TaxlotLines",   "TaxlotPoints",   "Taxlot")
+
+    #update_mapindex("MapIndex")
     arcpy.env.workspace = saved
 
     fix_mapscales(geodatabase, fclist=["MapIndex"])
