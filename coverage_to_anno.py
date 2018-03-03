@@ -155,31 +155,21 @@ def convert_anno(mxd, destination,  target, d_anno):
     df = arcpy.mapping.ListDataFrames(mxd)[0]
 
     layers = [
+        # Coverage is "taxseemap/annotation.igds"
+        ("TaxSeemap.igds",                  "AnnotationFD\\TaxSeemap",      False),
+
+        # Coverage is "taxmap/annotation.igds"
         ("TaxmapAnno0100.igds",             "AnnotationFD\\Anno0100Scale",  True),
         ("TaxmapAnno0200.igds",             "AnnotationFD\\Anno0200Scale",  True),
         ("TaxmapAnno0400.igds",             "AnnotationFD\\Anno0400Scale",  True),
         ("TaxmapAnno2000.igds",             "AnnotationFD\\Anno2000Scale",  True),
 
+        # Coverage is "taxlotan/annotation.igds"
         ("TaxLotAn.igds",                   "TaxlotsFD\\TaxlotAnno",        False),
+
+        # Coverage is "taxcodan/annotation.igds"
         ("TaxCodAn.igds",                   "TaxlotsFD\\TaxCodeAnno",       False),
         ]
-
-#    oldlayers = [   # (    Layer name,              output featureclass,      templated)
-#                ("StdAnno.igds 10 scale",   "AnnotationFD\\Anno0010scale",  True),
-#                ("StdAnno.igds 20 scale",   "AnnotationFD\\Anno0020scale",  True),
-#                ("StdAnno.igds 30 scale",   "AnnotationFD\\Anno0030scale",  True),
-#                ("StdAnno.igds 40 scale",   "AnnotationFD\\Anno0040scale",  True),
-#                ("StdAnno.igds 50 scale",   "AnnotationFD\\Anno0050scale",  True),
-#                ("StdAnno.igds 100 scale",  "AnnotationFD\\Anno0100scale",  True),
-#                ("StdAnno.igds 200 scale",  "AnnotationFD\\Anno0200scale",  True),
-#                ("StdAnno.igds 400 scale",  "AnnotationFD\\Anno0400scale",  True),
-#                ("StdAnno.igds 800 scale",  "AnnotationFD\\Anno0800scale",  True),
-#                ("StdAnno.igds 2000 scale", "AnnotationFD\\Anno2000scale",  True),
-#    
-#                ("FLAnno.igds Taxlot",      "TaxlotsFD\\TaxlotAnno",        False),
-#                ("FLAnno.igds Taxcode",     "TaxlotsFD\\TaxCodeAnno",       False),
-#                ("FLAnno.igds TaxlotAcres", "TaxlotsFD\\TaxlotAcresAnno",   False),
-#               ]
     
     mergelist = []
 

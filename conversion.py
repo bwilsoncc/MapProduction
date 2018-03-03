@@ -31,7 +31,7 @@ def backup_coverages(srcfolder, dst):
     sourcepath, township = os.path.split(srcfolder)
     dstfolder = os.path.join(dst, township)
     if os.path.exists(dstfolder):
-        msg = "Did not copy of %s to %s; folder exists." % (township, dst)        
+        msg = "Did not copy %s to %s; folder exists." % (township, dst)        
     else:
         copytree(srcfolder, dstfolder)
         msg = "Copied %s from %s to %s" % (township, sourcepath, dst)
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     # Do everything  
     archives = [ tfolder for tfolder in glob(os.path.join(archive,"t[4-9]-*"))]
     # Uncomment to select one township for testing
-    archives = [ tfolder for tfolder in glob(os.path.join(archive,"t6-*"))]
+    archives = [ tfolder for tfolder in glob(os.path.join(archive,"t6-6"))]
     # ...or one row of townships
     #archives = [ tfolder for tfolder in glob(os.path.join(archive,"t5-*"))]
     # ...or with an empty list, you can test the code outside the "for" loop...
@@ -206,18 +206,7 @@ if __name__ == "__main__":
         #    # Create a blank geodatabase from the template.
         #    copy_geodatabase(geodatabase_source, unmerged_gdb)
 
-        if True: # Set to False to skip the actual coverage -> gdb step during testing!
-            import_all_features(workfolder, merged_gdb, merge=True)
-
-            saved = arcpy.env.workspace
-            arcpy.env.workspace = os.path.join(merged_gdb, "TaxlotsFD")
-            make_polygons("TaxcodeLines", "TaxcodePoints", "Taxcode")
-            make_polygons("TaxlotLines", "TaxlotPoints", "Taxlot")
-
-            make_polygons("MapIndexLines", "MapIndexPoints", "MapIndex")
-            update_mapindex("MapIndex") # add fields and populate them
-
-            arcpy.env.workspace = saved
+        import_all_features(workfolder, merged_gdb, merge=True)
 
         # Copy the supporting MXD's into our workspace
         # This also "repairs" data sources if they need to be
@@ -236,6 +225,14 @@ if __name__ == "__main__":
         merge_anno(d_anno[dst], dst)
         fix_anno(dst) # this is slow, let's do it later... tomorrow maybe
         pass
+
+    saved = arcpy.env.workspace
+    arcpy.env.workspace = os.path.join(merged_gdb, "TaxlotsFD")
+    make_polygons("TaxcodeLines", "TaxcodePoints", "Taxcode")
+    make_polygons("TaxlotLines", "TaxlotPoints", "Taxlot")
+    make_polygons("MapIndexLines", "MapIndexPoints", "MapIndex")
+    update_mapindex("MapIndex") # populate some fields
+    arcpy.env.workspace = saved
 
     fix_mapscales(merged_gdb, ["MapIndex"])
 

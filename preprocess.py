@@ -114,28 +114,34 @@ def run_aml(amlsource, sourcefolder):
 
     return ok
 
-def post01(workfolder):
+def posttaxmap(workfolder):
     """ Code to run after stage 01.
     Fix taxbound ormapnum, the AML code to create ormapnum is broken for detail maps. """
 
-    fc = os.path.join(workfolder, "taxbound/label")
+    fc = os.path.join(workfolder, "tmptaxmap1/point")
+    #fc = os.path.join(workfolder, "taxbound/label")
 
     logging.info("post01(%s)" % fc)
 
-    fields = ["ORMAPNUM", "PageName", "MAPSUFNUM"]
+    fields = ["ORMAPNUM", "PAGENAME", "MAPSUFNUM", "OID@"]
     ORMAPNUM  = 0
     PAGENAME  = 1
     MAPSUFNUM = 2
+    OID       = 3
 
     orm = ormapnum()
     
     with arcpy.da.UpdateCursor(fc, fields) as cursor:
         for row in cursor:
-            o = row[ORMAPNUM]
+            o   = row[ORMAPNUM]
+            oid = row[OID]
             if not o:
-                # mysteriously, some ormapnumbers are just empty
-                cursor.deleteRow()
-                logging.debug("Deleted empty row.")
+                try:
+                    # mysteriously, some ormapnumbers are just empty
+                    cursor.deleteRow()
+                    logging.debug("Deleted empty row.")
+                except Exception as e:
+                    logging.warn("Could not delete empty row(%s). %s" % (oid, e))
                 continue
 
         # repair detail map number
@@ -145,8 +151,21 @@ def post01(workfolder):
                 row[ORMAPNUM] = orm.ormapnumber 
                 logging.info("Repaired %s" % row[ORMAPNUM])
 
+            try:
+                orm.unpack(o)
+            except ValueError as e:
+                logging.warn(e)
+
+            if orm.township == 0 or orm.range == 0:
+                try:
+                    # mysteriously, some ormapnumbers are 0,0
+                    cursor.deleteRow()
+                    logging.debug("Deleted 0,0 row.")
+                except Exception as e:
+                    logging.warn("Could not delete 0,0 row(%s). %s" % (oid, e))
+                continue
+
         # calc page number from ormapnum
-            orm.unpack(o)
             row[PAGENAME] = orm.shorten()
             cursor.updateRow(row)
             pass
@@ -155,7 +174,8 @@ def post01(workfolder):
 def preprocess(codefolder, sourcefolder, workfolder):
     ok = True
     l_aml = [
-        ("01-MakeTaxbound.aml",post01),
+        "01-MakeTaxmap.aml",
+        "01-MakeTaxbound.aml",
         "01-MakeMapIndex.aml",
         "02-Maketaxcode.aml",
         "03-MakeTaxlot.aml",
@@ -196,8 +216,10 @@ def preprocess(codefolder, sourcefolder, workfolder):
                 ok = False
             elif pyfun:
                 pyfun(workfolder)
+
         else:
             logging.info("Skipping %s because .WAT exists." % (baseaml))
+        pass # end of "for"
 
     os.chdir(saved)
     
