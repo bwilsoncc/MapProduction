@@ -7,9 +7,11 @@
 # ---------------------------------------------------------------------------
 from __future__ import print_function
 import arcpy
+from arcpy import mapping as MAP
 import os, logging
 import re
-from Toolbox.arc_utilities import aprint, eprint, ListFieldNames, DeleteFC
+from Toolbox.arc_utilities import ListFieldNames, DeleteFC
+from collections import defaultdict
 
 # ========================================================================
 
@@ -58,18 +60,19 @@ def check_annoscale(fc):
     print(count)
     pass
 
-def fix_fontsize(outputfc):
+def __fix_fontsize(outputfc):
     logging.info("fix_fontsize(%s)" % outputfc)
     arcpy.CalculateField_management(outputfc, "FontSize", "!MAPSIZE!", "PYTHON", "")
     return
 
-def fix_caret(outputfc):
-    logging.info("fix_caret(%s)" % outputfc)
-    fields = ListFieldNames(outputfc)
+def __fix_caret(fc):
+    """ Change carets to degree character in label fields in an annotation featureclass. """
+    logging.info("fix_caret(%s)" % fc)
+    fields = ListFieldNames(fc)
     if "TEXT_" in fields:
-        arcpy.CalculateField_management(outputfc, "TEXT_",      "!TEXT_!.replace('^',u'\xb0')",      "PYTHON", "")
+        arcpy.CalculateField_management(fc, "TEXT_",      "!TEXT_!.replace('^',u'\xb0')",      "PYTHON", "")
     if "TextString" in fields:
-        arcpy.CalculateField_management(outputfc, "TextString", "!TextString!.replace('^',u'\xb0')", "PYTHON", "")
+        arcpy.CalculateField_management(fc, "TextString", "!TextString!.replace('^',u'\xb0')", "PYTHON", "")
     return True
 
 def fix_anno(fc):
@@ -78,8 +81,11 @@ def fix_anno(fc):
     Make all the font sizes something reasonable."""
 
     if arcpy.Exists(fc) and int(arcpy.GetCount_management(fc).getOutput(0)):
-        fix_fontsize(fc)
-        fix_caret(fc)
+        
+        # I am pretty sure the AML code already does this.
+        # __fix_fontsize(fc)
+        
+        __fix_caret(fc)
 
     return
 
@@ -104,9 +110,7 @@ def import_anno(annolayer, outputfc, linkedfc):
                                                   "NO_SYMBOL_REQUIRED",
                                                   linked, linkedfc, "AUTO_CREATE", "AUTO_UPDATE")
     except Exception as e:
-        msg = "import_anno(%s, %s, %s), \"%s\"" % (annolayer, outputfc, linkedfc, e)
-        aprint(msg)
-        logging.error(msg)
+        logging.error("import_anno(%s, %s, %s), \"%s\"" % (annolayer, outputfc, linkedfc, e))
         success = False
         
     return success
@@ -132,9 +136,7 @@ def merge_anno(srclist, dst):
             arcpy.Delete_management(srclist)
 
     except Exception as e:
-        msg = "merge_anno(%s, %s), \"%s\"" % (srclist, dst, e)
-        aprint(msg)
-        logging.error(msg)
+        logging.error("merge_anno(%s, %s), \"%s\"" % (srclist, dst, e))
         success = False
 
     return success
@@ -178,11 +180,11 @@ def convert_anno(mxd, destination,  target, d_anno):
         try:
             annocoverage = arcpy.mapping.ListLayers(mxd, layername, df)[0]
         except Exception as e:
-            aprint("convert_anno: %s" % e)
+            logging.error("convert_anno(%s) %s" % (layername, e))
             warning += 1
             continue
 
-        logging.info("convert_anno: %s => %s" % (layername,outputname))
+        logging.info("convert_anno(%s) => %s" % (layername,outputname))
 
 # per conversation with Dean on 1/22/18, dont do feature linked annotation.
 # per conversation with Adam 1/26, it's really not needed right now anyway;
@@ -193,7 +195,7 @@ def convert_anno(mxd, destination,  target, d_anno):
 #        if linkedname: 
 #            linkedfc = os.path.join(destination, linkedname)
 #            if not arcpy.Exists(linkedfc):
-#                aprint("ERROR: skipping \"%s\", because linked fc \"%s\" does not exist." % (layername,linkedname))
+#                logging.error("Skipping \"%s\", because linked fc \"%s\" does not exist." % (layername,linkedname))
 #                continue
     
         annocount = int(arcpy.GetCount_management(annocoverage).getOutput(0))
@@ -248,15 +250,38 @@ def __import_anno(workfolder, target):
         
 if __name__ == "__main__":
 
+    MYNAME  = os.path.splitext(os.path.split(__file__)[1])[0]
+    LOGFILE = MYNAME + ".log"
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(filename=LOGFILE, level=logging.DEBUG, format=FORMAT)
+
     workfolder = "C:\\GeoModel\\Clatsop\\Workfolder"
-    target = "t8-9"
+    township = "t6-6"
     
     gdb = "ORMAP_Clatsop.gdb"
     fc = os.path.join(workfolder, gdb, "TaxlotsFD\\TaxCodeAnno")
-    check_annoscale(fc)
+#    check_annoscale(fc)
 
-    #__import_anno(workfolder, target)
-    
+    d_anno = defaultdict(list)
+
+    os.chdir(workfolder)
+    logging.info("Convert annotation %s" % township)
+    mxdname = os.path.join(township,"Annotation.mxd")
+    if not os.path.exists(mxdname):
+        logging.error("MXD \"%s\" not found." % mxdname)
+    else:
+        mxd = MAP.MapDocument(mxdname)
+        convert_anno(mxd, os.path.join(workfolder, gdb), township.replace('-','_'), d_anno)
+        del mxd # release schema locks
+
+    for dst in d_anno:
+        merge_anno(d_anno[dst], dst)
+        
+        # fix_anno() needs to be run from a Field Calc because it runs on an annotation feature class
+        # It is only here for testing early in the dev cycle
+        # fix_anno(dst)
+        pass
+
     print("Tests completed.")
 
 # That's all!

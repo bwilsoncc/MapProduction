@@ -17,7 +17,6 @@ from glob import glob
 from shutil import copyfile, copytree, rmtree
 import arcpy
 from arcpy import mapping as MAP
-from Toolbox.arc_utilities import aprint, eprint
 from Toolbox.ormapnum import ormapnum
 
 MYNAME  = os.path.splitext(os.path.split(__file__)[1])[0]
@@ -105,7 +104,6 @@ def run_aml(amlsource, sourcefolder):
         # Still running
         msg = "Terminating process %d and its children." % p.pid
         logging.error(amlsource + ":" + msg)
-        aprint(msg)
         # Can't do simple terminate because "arc" starts subprocesses like "arcedit".
         # /T option causes child processes to be taken down too.
         # /F means "force".
@@ -174,21 +172,25 @@ def posttaxmap(workfolder):
 def preprocess(codefolder, sourcefolder, workfolder):
     ok = True
     l_aml = [
-        "01-MakeTaxmap.aml",
-        "01-MakeTaxbound.aml",
-        "01-MakeMapIndex.aml",
-        "02-Maketaxcode.aml",
-        "03-MakeTaxlot.aml",
-        "04-convertanno.aml",
-        "05-convertseemap.aml",
-        "08-MakeRefLines.aml", 
-        "09-MakeCARTOLINES.aml", 
-        "10-MakeCornerPoints.aml", 
-        "11-MakePLSSLines.aml", 
-        "12-MakeWaterLines.aml", 
-        #"14-ACRESanno.aml", # old code
-        #"CC1-AssignAnnotationClasses.aml", # Brian wrote this one.
-        "15-FinishAnno.aml",
+        "01-tmptaxmap1",
+
+        "02-mapindex",
+        "02-taxbound",
+        "02-taxcode",
+        "02-taxlot",
+
+        "04-tmptaxmap2",
+        
+        "05-annotation",        
+
+        # These are all basically the same code, but I am not up to refactoring them today.
+        # They can execute in any order as long as it's after tmptaxmap2 and taxbound get built
+        "06-cornerpoints",
+        "06-cartolines",
+        "06-plsslines",
+        "06-reflines",
+        "06-waterlines",
+
         ]
     saved = os.getcwd()
 
@@ -208,8 +210,7 @@ def preprocess(codefolder, sourcefolder, workfolder):
         os.chdir(workfolder) # This is the AML workspace
 
         # Use the existence of a WAT file as evidence we don't need to rerun a step
-        baseaml,ext = os.path.splitext(aml)
-        wat = baseaml + ".wat"
+        wat = aml + ".wat"
         if not os.path.exists(wat):
             logging.info(aml)
             if not run_aml(os.path.join(codefolder, aml), sourcefolder):
@@ -218,7 +219,7 @@ def preprocess(codefolder, sourcefolder, workfolder):
                 pyfun(workfolder)
 
         else:
-            logging.info("Skipping %s because .WAT exists." % (baseaml))
+            logging.info("Skipping %s because .WAT exists." % (aml))
         pass # end of "for"
 
     os.chdir(saved)

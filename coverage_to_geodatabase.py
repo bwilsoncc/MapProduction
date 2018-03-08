@@ -8,7 +8,7 @@
 from __future__ import print_function
 import arcpy
 import os, logging
-from Toolbox.arc_utilities import aprint, eprint, ListFieldNames, DeleteFC, AddField
+from Toolbox.arc_utilities import ListFieldNames, DeleteFC, AddField
 from ormapnum import ormapnum
 from ormap_utilities import dict_ormapnumbers
 
@@ -22,15 +22,11 @@ def import_features(coverage, fc, merge):
     logging.info("Importing coverage %s to featureclass %s (merge=%s)" % (coverage,fc,merge))
 
     if not arcpy.Exists(coverage):
-        msg = "Input coverage must exist. %s" % coverage
-        eprint(msg)
-        logging.error(msg)
+        logging.error("Input coverage must exist. %s" % coverage)
         return False
     
     if not arcpy.Exists(fc):
-        msg = "Output feature class must exist. %s" % fc
-        eprint(msg)
-        logging.error(msg)
+        logging.error("Output feature class must exist. %s" % fc)
         return False
     
     if not merge:
@@ -110,7 +106,7 @@ def make_polygons(infc, labelfc, outfc):
 
     workspace = arcpy.env.workspace
     ofc = os.path.join(workspace, outfc)
-    aprint("make_polygons(%s, %s, %s)" % (infc, labelfc, outfc))
+    logging.info("make_polygons(%s, %s, %s)" % (infc, labelfc, ofc))
     if arcpy.Exists(ofc):
         arcpy.Delete_management(ofc)
     try:
@@ -119,23 +115,20 @@ def make_polygons(infc, labelfc, outfc):
             ofc, "", "ATTRIBUTES", 
             os.path.join(workspace, labelfc))
     except Exception as e:
-        print(e)
+        logging.error(e)
 
     return
 
 def update_mapindex(fc):
-    """ Update the mapindex fc by adding and populating fields.
-    pagename      a unique page name to identify the row including MapNumber and detail page number
-    pagenumber    a long that is properly sorted by pagename
+    """ Update the mapindex fc by adding and populating longmaptitle field.
     longmaptitle  a string that can be used on maps as the "small map title"
     """
     fields = ["ORMapNum", "longmaptitle", "OID@"]
     ORMAPNUM = 0
     LONGTTL  = 1
     OID      = 2
-    mapindexfc = "MapIndex"
-    if arcpy.Exists(mapindexfc):
-        AddField(mapindexfc, "LongMapTitle", "TEXT", fieldlen=50)
+    if arcpy.Exists(fc):
+        AddField(fc, "LongMapTitle", "TEXT", fieldlen=50)
 
         orm = ormapnum()
 
@@ -157,7 +150,6 @@ def update_mapindex(fc):
                         logging.warn(e)
 
                     cursor.updateRow(row)
-
     return
 
 __stdscales = {
