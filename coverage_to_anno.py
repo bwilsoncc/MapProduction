@@ -157,20 +157,25 @@ def convert_anno(mxd, destination,  target, d_anno):
     df = arcpy.mapping.ListDataFrames(mxd)[0]
 
     layers = [
-        # Coverage is "taxseemap/annotation.igds"
-        ("TaxSeemap.igds",                  "AnnotationFD\\TaxSeemap",      False),
-
-        # Coverage is "taxmap/annotation.igds"
-        ("TaxmapAnno0100.igds",             "AnnotationFD\\Anno0100Scale",  True),
-        ("TaxmapAnno0200.igds",             "AnnotationFD\\Anno0200Scale",  True),
-        ("TaxmapAnno0400.igds",             "AnnotationFD\\Anno0400Scale",  True),
-        ("TaxmapAnno2000.igds",             "AnnotationFD\\Anno2000Scale",  True),
-
-        # Coverage is "taxlotan/annotation.igds"
-        ("TaxLotAn.igds",                   "TaxlotsFD\\TaxlotAnno",        False),
+        # Coverage is "bearingan/annotation.igds"
+        ("BearingAn.igds",              "AnnotationFD\\Bearing",       False),
 
         # Coverage is "taxcodan/annotation.igds"
-        ("TaxCodAn.igds",                   "TaxlotsFD\\TaxCodeAnno",       False),
+        ("TaxCodAn.igds",               "AnnotationFD\\TaxCode",       False),
+
+        # Coverage is "taxseemap/annotation.igds"
+        ("TaxSeemap.igds",              "AnnotationFD\\TaxSeemap",      False),
+
+        # Coverage is "taxlotan/annotation.igds"
+        ("TaxLotAn.igds",               "TaxlotsFD\\TaxlotAnno",        False),
+
+        # Coverage is "taxmap/annotation.igds"
+        ("TaxmapAnno.igds",             "AnnotationFD\\Taxmap",  True),
+#        ("TaxmapAnno0200.igds",         "AnnotationFD\\Anno0200Scale",  True),
+#        ("TaxmapAnno0400.igds",         "AnnotationFD\\Anno0400Scale",  True),
+#        ("TaxmapAnno2000.igds",         "AnnotationFD\\Anno2000Scale",  True),
+
+
         ]
     
     mergelist = []

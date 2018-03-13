@@ -1,26 +1,30 @@
-This README is now far far out of date...
-I forgot it was even here until I looked at github today.
-Contact me if you wandered in here.
+# ORMAP - Map Production Tools
 
-# ORMAP - Map Production Toolbar
+This is a fork of the original tools, this version has been tailored
+to support Clatsop County but might work elsewhere.
 
-The ORMAP Map Production toolbar is a specific set of tools built to support Oregon Counties and the mapping requirments set forth by the Oregon Department of Revenue for mapping tax 
-parcels.  The tools are built using the programming language Python and the  <a href="https://esri.com/" target="_blank">ESRI</a> ArcPy python library.  They are  platform as an Add-in and supports version 10.1+ (currently tested up to version 10.3). ArcMap is required 
-to use this toolbar. 
+This is a set of tools built for ESRI ArcGIS Desktop (10.5.1 at the
+moment) to support the mapping requirments set forth by the Oregon
+Department of Revenue for mapping tax parcels.  The tools are built in
+Python using the <a href="https://esri.com/" target="_blank">ESRI</a>
+ArcPy python library.
 
-![alt text](https://raw.githubusercontent.com/ORMAPtools/MapProduction/master/Suppemental/Toolbar.PNG "Image of the toolbar")
+The tools are included in a Python Toolbox for access direct from an
+ArcMap document. A sample document is included.
 
-This fork was done to facilitate work in Clatsop county. As such if you can use it for anything, fine.
-Since the original repo seems unmaintained I have not tried to do any pull requests; at this point this code
-would only break that repo. 
+The original github repo seems unmaintained so I have not tried to do
+any pull requests; at this point this code would only break that repo.
 
-I am currently eliminating redundant repetitious code and making configuration more robust and flexible.
 
-I have been testing the zoom tool from the toolbox found in the Scripts folder, this is much easier than using the addin.
 
-I have not updated the following documentation yet.
+
+
 
 ### Documentation/Configuration
+
+I moved away from providing an add-in as I did not see any benefit in using it.
+
+== NOTE THAT THE FOLLOWING DOCUMENTATION IS TOTALLY OUT OF DATE. It is left over from the original version and I need to update it.
 
 This Add-In requires configuration and setup prior to use.  This documentation is meant for an administrator who will configure and distribute the Add-In to users.   
 

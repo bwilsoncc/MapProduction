@@ -53,8 +53,8 @@ if __name__ == "__main__":
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(filename=LOGFILE, level=logging.DEBUG, format=FORMAT)
 
-    #archive           = "k:\\taxmaped\\Clatsop\\towned"
-    archive            = "c:\\taxmaped_BACKUPS"
+    archive            = "k:\\taxmaped\\Clatsop\\towned"
+    #archive           = "c:\\taxmaped_BACKUPS\towned"
     workspace          = "C:\\GeoModel\\Clatsop"
     geodatabase_source = "C:\\GeoModel\\MapProduction\\ORMAP_Clatsop_Schema.gdb"
     geodatabase        = "ORMAP_Clatsop.gdb"
@@ -62,9 +62,9 @@ if __name__ == "__main__":
     # Convert the entire county, this is the normal default  
     archives = [ tfolder for tfolder in glob(os.path.join(archive,"t[4-9]-*"))]
     # Uncomment to select one township for testing
-    archives = [ tfolder for tfolder in glob(os.path.join(archive,"t6-10"))]
+    #archives = [ tfolder for tfolder in glob(os.path.join(archive,"t6-10"))]
     # ...or one row of townships to include testing merging
-    #archives = [ tfolder for tfolder in glob(os.path.join(archive,"t6-*"))]
+    #archives = [ tfolder for tfolder in glob(os.path.join(archive,"t4-*"))]
     # ...or with an empty list, you can test the code outside the "for" loop...
     #archives = []
 
@@ -95,6 +95,8 @@ if __name__ == "__main__":
 #        if os.path.exists(workfolder): 
 #            print("Delete %s if you want to re-process it." % workfolder)
 #            continue
+
+        logging.info("Processing %s" % township)
 
         amlsource = os.path.join(workspace, "AML")
         ok = preprocess(amlsource, sourcefullpath, workfolder)     

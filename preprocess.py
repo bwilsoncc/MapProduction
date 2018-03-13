@@ -174,10 +174,11 @@ def preprocess(codefolder, sourcefolder, workfolder):
     l_aml = [
         "01-tmptaxmap1",
 
-        "02-mapindex",
         "02-taxbound",
-        "02-taxcode",
-        "02-taxlot",
+
+        "03-mapindex",
+        "03-taxcode",
+        "03-taxlot",
 
         "04-tmptaxmap2",
         
@@ -241,9 +242,9 @@ if __name__ == "__main__":
     source_folder = os.path.join(workspace, "Source")
 
     # Do everything  
-    #sources = [ tfolder for tfolder in glob(os.path.join(source_folder,"t[4-9]-*"))]
+    sources = [ tfolder for tfolder in glob(os.path.join(source_folder,"t[4-9]-*"))]
     # Uncomment to select one township for testing
-    sources = [ tfolder for tfolder in glob(os.path.join(source_folder, "t6-10"))]
+    #sources = [ tfolder for tfolder in glob(os.path.join(source_folder, "t6-10"))]
     # ...or one row of townships
     #sources = [ tfolder for tfolder in glob(os.path.join(source_folder,"t4-[67]*"))]
     # ...or with an empty list, you can test the code outside the "for" loop...
@@ -256,7 +257,7 @@ if __name__ == "__main__":
         sourcepath, township = os.path.split(sourcefullpath)
         workfolder = os.path.join(workspace, "Workfolder", township)
 
-        msg = "Preprocessing township %s" % township
+        msg = "---- Preprocessing township %s ----" % township
         logging.info(msg)
            
         amlsource = os.path.join(workspace, "AML")
