@@ -37,7 +37,7 @@ def enqueue_output(out, q):
     out.close()
     return
 
-def run_aml(amlsource, sourcefolder):    
+def run_aml(amlsource, sourcefolder=""):    
     """
     Run an AML file
     
@@ -229,6 +229,40 @@ def preprocess(codefolder, sourcefolder, workfolder):
 #    logging.info("TAXACRES updated in %d rows" % count)
 
     return ok
+
+def merge_annotation(sources, workfolder):
+    """ Gather all the annotation feature classes together and merge them into one coverage """
+
+    coverages = [
+        "bearingan",
+        "seemapan",
+        "taxcodan",
+        "taxlotan",
+        "taxmapan",
+        ]
+    cwd = os.getcwd()
+    os.chdir(workfolder)
+    cmdfile = "mergeanno.aml"
+    with open(cmdfile, "w") as fp:
+        fp.write("&watch mergeanno.wat\n")
+        for coverage in coverages:
+            outputcoverage = coverage
+            fp.write("&type Creating %s\n" % outputcoverage)
+            if arcpy.Exists(outputcoverage):
+                fp.write("kill %s\n" % outputcoverage)
+            fp.write("append %s ANNO.igds ALL\n" % outputcoverage)
+            sourcecount = 0
+            for source in sources:
+                sourcecoverage = os.path.join(source, coverage)
+                # preprocess does not create empty coverages so skip missing files
+                if arcpy.Exists(sourcecoverage):
+                    fp.write(sourcecoverage + "\n")
+                    sourcecount += 1
+            fp.write("end\n")
+    if sourcecount:
+        run_aml(cmdfile)
+    os.chdir(cwd)
+    return
         
 # =============================================================================
 if __name__ == "__main__":
@@ -239,31 +273,37 @@ if __name__ == "__main__":
     logging.basicConfig(filename=LOGFILE, level=logging.DEBUG, format=FORMAT)
 
     workspace = "C:\\GeoModel\\Clatsop"
-    source_folder = os.path.join(workspace, "Source")
+    sourcefolder = os.path.join(workspace, "Source")
+    workfolder = os.path.join(workspace, "Workfolder")
 
     # Do everything  
-    sources = [ tfolder for tfolder in glob(os.path.join(source_folder,"t[4-9]-*"))]
+    os.chdir(workspace)
+    townships = glob("t[4-9]-*")
+    # Grant project area
+    townships = ["t6-6", "t6-7", "t7-6", "t7-7", "t8-6", "t8-7", "t9-6", "t9-7"]
     # Uncomment to select one township for testing
-    #sources = [ tfolder for tfolder in glob(os.path.join(source_folder, "t6-10"))]
+    #townships = [ "t6-10" ]
     # ...or one row of townships
-    #sources = [ tfolder for tfolder in glob(os.path.join(source_folder,"t4-[67]*"))]
+    #townships = glob("t4-[67]*")
     # ...or with an empty list, you can test the code outside the "for" loop...
     #sources = []
 
-    logging.info("preprocess(%s)" % sources)
+    logging.info("preprocess(%s)" % townships)
     ok = True
 
-    for sourcefullpath in sources:
-        sourcepath, township = os.path.split(sourcefullpath)
-        workfolder = os.path.join(workspace, "Workfolder", township)
+    for township in townships:
 
-        msg = "---- Preprocessing township %s ----" % township
-        logging.info(msg)
-           
+        logging.info("---- Preprocessing township %s ----" % township)
+                   
         amlsource = os.path.join(workspace, "AML")
-        ok = preprocess(amlsource, sourcefullpath, workfolder)     
+        sourcefullpath = os.path.join(sourcefolder, township)
+        townshipfolder = os.path.join(workfolder, township)
+
+        ok = preprocess(amlsource, sourcefullpath, townshipfolder)     
         if not ok: 
             logging.warning("Preprocessing completed with errors.")
+
+    merge_annotation(townships, workfolder)
 
     if ok: 
         print("All done!")

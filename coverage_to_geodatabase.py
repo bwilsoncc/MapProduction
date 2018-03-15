@@ -14,36 +14,27 @@ from ormap_utilities import dict_ormapnumbers
 
 # ========================================================================
 
-def import_features(coverage, fc, merge):
+def import_features(coverage, fc):
     """ Import a coverage into a geodatabase feature class.
-    The output feature class has to exist. If "merge" = False,
-    then delete any existing features first. """
+    The output feature class has to exist. """
 
-    logging.info("Importing coverage %s to featureclass %s (merge=%s)" % (coverage,fc,merge))
+    logging.info("import_features(%s, %s)" % (coverage,fc))
+    rval = False
 
     if not arcpy.Exists(coverage):
         logging.error("Input coverage must exist. %s" % coverage)
-        return False
-    
-    if not arcpy.Exists(fc):
+    elif not arcpy.Exists(fc):
         logging.error("Output feature class must exist. %s" % fc)
-        return False
-    
-    if not merge:
+    else:   
         try:
-            arcpy.DeleteFeatures_management(fc)
+            arcpy.Append_management(coverage, fc, "NO_TEST")
         except Exception as e:
-            logging.error("import_features(%s,%s) DeleteFeatures :%s" % (coverage,fc, e))
+            logging.error("import_features(%s,%s) Append :%s" % (coverage,fc, e))
+        rval = True
 
-    logging.info("import_features(%s, %s)" % (coverage,fc))
-    try:
-        arcpy.Append_management(coverage, fc, "NO_TEST")
-    except Exception as e:
-        logging.error("import_features(%s,%s) Append :%s" % (coverage,fc, e))
-        
-    return True
+    return rval
 
-def import_all_features(source_folder, geodatabase, merge=False):
+def import_all_features(source_folder, geodatabase):
 
     # First item is coverage name, second is featureclass name
     # DON'T forget, attributes won't be in the output featureclass unless they are in the template database.
@@ -81,7 +72,7 @@ def import_all_features(source_folder, geodatabase, merge=False):
         srccvg = os.path.join(source_folder, coverage)        
         destfc = os.path.join(geodatabase, fc)
 
-        import_features(srccvg, destfc, merge)
+        import_features(srccvg, destfc)
             
     return True
 
@@ -103,17 +94,19 @@ def make_polygons(infc, labelfc, outfc):
     # NB when I ran it as a standalone tool in ArcMap I got a background server error, I had to run it in foreground.
 
     # I wish that ESRI was a bit more consistent in what DOES and DOES NOT support the workspace environment variable.
-
-    workspace = arcpy.env.workspace
-    ofc = os.path.join(workspace, outfc)
-    logging.info("make_polygons(%s, %s, %s)" % (infc, labelfc, ofc))
-    if arcpy.Exists(ofc):
-        arcpy.Delete_management(ofc)
+    ws = str(arcpy.env.workspace)
+    
+    logging.info("make_polygons(%s, %s, %s)" % (infc, labelfc, outfc))
+    i = os.path.join(ws, infc)
+    l = os.path.join(ws, labelfc)
+    o = os.path.join(ws, outfc) 
+    
     try:
-        arcpy.FeatureToPolygon_management(
-            os.path.join(workspace, infc), 
-            ofc, "", "ATTRIBUTES", 
-            os.path.join(workspace, labelfc))
+        arcpy.Delete_management(o)
+    except Exception as e:
+        logging.info("Did not delete %s, %s" % (o, e))
+    try:
+        arcpy.FeatureToPolygon_management(i, o, "", "ATTRIBUTES", l)
     except Exception as e:
         logging.error(e)
 
