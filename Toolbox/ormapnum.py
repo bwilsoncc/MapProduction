@@ -138,13 +138,13 @@ class ormapnum(object):
         return lmt
     
     def shorten(self):
-        """ Return a shortened format that's easier to read. """
+        """ Return a shortened format that's easier to read and sort. """
        
-        shortie = "%s.%s" % (self.township, self.range)
-
+        shortie = "%d %02d" % (self.township, self.range)
+        
         section = self.section
         if section > 0: 
-            shortie += ".%d" % section
+            shortie += " %d" % section
 
         shortie += self.qq()
 
