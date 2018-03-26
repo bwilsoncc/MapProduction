@@ -44,22 +44,6 @@ def fixannoclass(currentclassid, level, m):
             pass
     return classid
 
-def check_annoscale(fc):
-    fields = ["AnnotationClassID", "MAPNUMBER", "level"]
-    count = 0
-    # Can't use an Insert or UpdateCursor on an annotation featureclass
-    with arcpy.da.SearchCursor(fc, fields) as cursor:
-        for row in cursor:
-            mapnum  = row[1]
-            level   = row[2]
-            classid = fixannoclass(row[0], level, mapnum)
-            if classid == row[2]: 
-                count += 1
-                continue
-            print("%d : %10s %2d %2d" % (row[0], row[1], row[2], classid))
-    print(count)
-    pass
-
 def __fix_fontsize(outputfc):
     logging.info("fix_fontsize(%s)" % outputfc)
     arcpy.CalculateField_management(outputfc, "FontSize", "!MAPSIZE!", "PYTHON", "")
@@ -69,8 +53,6 @@ def __fix_caret(fc):
     """ Change carets to degree character in label fields in an annotation featureclass. """
     logging.info("fix_caret(%s)" % fc)
     fields = ListFieldNames(fc)
-    if "TEXT_" in fields:
-        arcpy.CalculateField_management(fc, "TEXT_",      "!TEXT_!.replace('^',u'\xb0')",      "PYTHON", "")
     if "TextString" in fields:
         arcpy.CalculateField_management(fc, "TextString", "!TextString!.replace('^',u'\xb0')", "PYTHON", "")
     return True
@@ -80,12 +62,16 @@ def fix_anno(fc):
     Make all the carets into "degree" symbols.
     Make all the font sizes something reasonable."""
 
-    if arcpy.Exists(fc) and int(arcpy.GetCount_management(fc).getOutput(0)):
-        
-        # I am pretty sure the AML code already does this.
-        # __fix_fontsize(fc)
-        
-        __fix_caret(fc)
+    if arcpy.Exists(fc):
+    
+        badfields = [ "TEXT", "LEVEL", "MAPSIZE" ] # these generate errors: "SYMBOL", "ID", "IGDS_", "IGDS_ID" ]
+        for f in badfields:
+            try:
+                arcpy.DeleteField_management(fc, f)
+            except Exception as e:
+                print(e)
+        if int(arcpy.GetCount_management(fc).getOutput(0)):
+            __fix_caret(fc)
 
     return
 
@@ -123,6 +109,11 @@ def convert_anno(annolayer, outputfc):
     Output feature class is in a geodatabase.
     """
     logging.info("convert_anno(%s, %s)" % (annolayer.name, outputfc))
+
+    # IGNORE SELECTIONS! Otherwise I end up with annotation feature classes with one row...
+    arcpy.SelectLayerByAttribute_management(annolayer, "CLEAR_SELECTION")
+    annolayer.visible = True
+
     annocount = 0
     try:
         fc = annolayer.dataSource
@@ -140,9 +131,18 @@ def convert_anno(annolayer, outputfc):
         if arcpy.Exists(outputfc):
             arcpy.Delete_management(outputfc)
         try:
-            arcpy.ImportCoverageAnnotation_conversion(annolayer, outputfc, 
-                                                      1200.0, 
-                                                      "CLASSES_FROM_LEVELS")
+            logging.info("Importing coverage anno to gdb.")
+
+            # I tried creating empty template anno fc's but when I used AppendAnnotation_management,
+            # it created a whole new set of annotation classes in the append operation
+            # instead of using the ones already in the template so 
+            # I tore that code out.
+
+            arcpy.ImportCoverageAnnotation_conversion(annolayer, outputfc, 1200.0, "CLASSES_FROM_LEVELS")
+            
+            #arcpy.AppendAnnotation_management(tmpfc, outputfc, 1200, create_single_class="CREATE_CLASSES")
+            #logging.info("Deleting tmp fc.")
+            #arcpy.Delete_management(tmpfc)
         except Exception as e:
             logging.error("convert_anno, exception in conversion: %s" % e)
     return
@@ -150,21 +150,21 @@ def convert_anno(annolayer, outputfc):
 def import_anno(mxdname, geodatabase):
     """ Import annotation coverages into annotation feature classes. """
     layers = [
-        ("bearingan", "AnnotationFD\\BearingAnno", False),
-        ("taxcodan",  "AnnotationFD\\TaxCodeAnno", False),
-        ("seemapan",  "AnnotationFD\\SeemapAnno",  False),
-        ("taxmapan",  "AnnotationFD\\TaxmapAnno",  True),
-        ("taxlotan",  "AnnotationFD\\TaxlotAnno",  False),
+        ("tmpbearingan", "annotation_fd\\bearing_anno"),
+        ("tmpseemapan",  "annotation_fd\\seemap_anno"),
+        ("tmptaxlotan",  "annotation_fd\\taxlot_anno"),
+        ("tmptaxcodan",  "annotation_fd\\taxcode_anno"),
+        ("tmptaxmapan",  "annotation_fd\\taxmap_anno"),
         ]
     logging.info("import_anno(%s, %s)" % (mxdname, geodatabase))
     mxd = MAP.MapDocument(mxdname)
     df  = MAP.ListDataFrames(mxd)[0]
-    for (layername, fc, mapscaleflag) in layers:
+    for (layername, fc) in layers:
         annolayer = MAP.ListLayers(mxd, layername, df)[0]
         outputfc = os.path.join(geodatabase, fc)
         convert_anno(annolayer, outputfc)
-        #fix_caret(outputfc)
-        #fix_fontsize(outputfc)
+        fix_anno(outputfc)
+
     del mxd # Release schema locks, hopefully.
         
 # ========================================================================
@@ -175,11 +175,10 @@ if __name__ == "__main__":
     LOGFILE = MYNAME + ".log"
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(filename=LOGFILE, level=logging.DEBUG, format=FORMAT)
-
-    workspace   = "C:/GeoModel/Clatsop" 
-    geodatabase = os.path.join(workspace,"Workfolder/ORMAP_Clatsop.gdb")
-#    check_annoscale(fc)
+    workspace   = "C:/GeoModel/Clatsop/Workfolder" 
+    geodatabase = os.path.join(workspace,"ORMAP_Clatsop.gdb")
     mxdname = os.path.join(workspace, "Annotation.MXD")
+    print("Writing log to %s" % LOGFILE)
     import_anno(mxdname, geodatabase)
 
     print("Tests completed.")

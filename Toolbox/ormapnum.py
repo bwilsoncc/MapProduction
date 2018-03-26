@@ -99,18 +99,18 @@ class ormapnum(object):
 
     def shortmaptitle(self):
         """ Return text string usable for short title.
-        Example: 8.8.10AB """
+        Example: 8 08 01 AA """
     
-        shortmaptitle = '%s.%s' % (self.township, self.range)
-        if self.section>0: shortmaptitle += ".%d" % self.section
+        smt = '%d %02d' % (self.township, self.range)
+        if self.section>0: smt += " %02d" % self.section
+
+        # possibly add the letters like 'AA'
         if self.quarter != '0':
-            shortmaptitle += self.quarter
-            if self.quarterquarter != '0': shortmaptitle += self.quarterquarter
+            smt += ' ' + self.quarter
+            if self.quarterquarter != '0':
+                smt += self.quarterquarter
 
-        townrng = "T" + str(self.township) + self.township_frac + self.township_dir + ' ' + \
-                  "R" + str(self.range)    + self.range_frac    + self.range_dir    + " WM"
-
-        return shortmaptitle
+        return smt
 
     def longmaptitle(self):
         """ Return text string usable for long titles.
@@ -119,7 +119,7 @@ class ormapnum(object):
         townrng = "T" + str(self.township) + self.township_frac + self.township_dir + ' ' + \
                   "R" + str(self.range)    + self.range_frac    + self.range_dir    + " WM"
 
-        longmaptitle = townrng
+        lmt = townrng
         if str(self.section):
             qqtext = self.qqtext()
             if qqtext:
@@ -127,15 +127,15 @@ class ormapnum(object):
             else:
                 l1 = "SECTION " + str(self.section)   
 
-            longmaptitle = l1 + ' ' + townrng
+            lmt = l1 + ' ' + townrng
             try:
                 # If there is a "map suffix" then split the title on 2 lines.
                 s_sfx = {'D':'DETAIL', 'S':'SUPPLEMENTAL', 'T':'DETAIL'}[self.mapsuffixtype]
-                longmaptitle = l1 + '\n' + townrng + " %s %d" % (s_sfx, self.mapsuffixnumber)
+                lmt = l1 + '\n' + townrng + " %s %d" % (s_sfx, self.mapsuffixnumber)
             except KeyError:
                 pass
 
-        return longmaptitle
+        return lmt
     
     def shorten(self):
         """ Return a shortened format that's easier to read. """

@@ -50,7 +50,7 @@ def run_aml(amlsource, sourcefolder=""):
     AML files and WATCH files will be written into the workspace (cwd)
     """ 
     args = ["c:/arcgis/arcexe9x/bin/arc", "&r " + amlsource, sourcefolder]
-    
+    amlpath,amlfile = os.path.split(amlsource)
     ok = True
     
     # Start "arc" running as a child process and grab its stdout.
@@ -86,24 +86,24 @@ def run_aml(amlsource, sourcefolder=""):
             #if verbose: print(line.strip())
             if line.find("AML MESSAGE")>=0:
                 if line.find("Stopping execution")>=0:
-                    msg = "%s:Stopping execution on %s" % (amlsource, sourcefolder)
+                    msg = "%s: Stopping execution on %s" % (amlfile, sourcefolder)
                     logging.warning(msg)
                     print(msg)
                     countdown = 10 # give it another 10 seconds
                 else:
-                    logging.warning(amlsource + ":" + line.strip())
+                    logging.warning(amlfile + ":" + line.strip())
                     if not verbose: print(line.strip())
             elif line.find("DO YOU WANT TO TRY AGAIN?")>=0:
-                logging.warning(amlsource + ":" + line.strip())
-                msg = "%s:INPUT PROMPT. %s" % (amlsource, sourcefolder)
+                logging.warning(amlfile + ":" + line.strip())
+                msg = "%s:INPUT PROMPT. %s" % (amlfile, sourcefolder)
                 logging.warning(msg)
                 print(msg)
-                countdown = 5 # give it another second
+                countdown = 5 # give it more time
                 
     if retcode == None:
         # Still running
         msg = "Terminating process %d and its children." % p.pid
-        logging.error(amlsource + ":" + msg)
+        logging.error(amlfile + ":" + msg)
         # Can't do simple terminate because "arc" starts subprocesses like "arcedit".
         # /T option causes child processes to be taken down too.
         # /F means "force".
@@ -234,11 +234,11 @@ def merge_annotation(sources, workfolder):
     """ Gather all the annotation feature classes together and merge them into one coverage """
 
     coverages = [
-        "bearingan",
-        "seemapan",
-        "taxcodan",
-        "taxlotan",
-        "taxmapan",
+        "tmpbearingan",
+        "tmpseemapan",
+        "tmptaxcodan",
+        "tmptaxlotan",
+        "tmptaxmapan",
         ]
     cwd = os.getcwd()
     os.chdir(workfolder)
@@ -248,8 +248,7 @@ def merge_annotation(sources, workfolder):
         for coverage in coverages:
             outputcoverage = coverage
             fp.write("&type Creating %s\n" % outputcoverage)
-            if arcpy.Exists(outputcoverage):
-                fp.write("kill %s\n" % outputcoverage)
+            fp.write("&if [exists %s -cover] &then kill %s\n" % (outputcoverage, outputcoverage))
             fp.write("append %s ANNO.igds ALL\n" % outputcoverage)
             sourcecount = 0
             for source in sources:
@@ -281,13 +280,14 @@ if __name__ == "__main__":
     townships = glob("t[4-9]-*")
     # Grant project area
     townships = ["t6-6", "t6-7", "t7-6", "t7-7", "t8-6", "t8-7", "t9-6", "t9-7"]
-    # Uncomment to select one township for testing
-    #townships = [ "t6-10" ]
+    # Uncomment to select 2 townships for quick testing
+    #townships = [ "t8-6", "t8-7" ]
     # ...or one row of townships
     #townships = glob("t4-[67]*")
     # ...or with an empty list, you can test the code outside the "for" loop...
     #sources = []
 
+    print("Writing log to %s" % LOGFILE)
     logging.info("preprocess(%s)" % townships)
     ok = True
 

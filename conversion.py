@@ -16,7 +16,7 @@ import arcpy
 from arcpy import mapping as MAP
 
 from update_acres import update_acres
-from coverage_to_geodatabase import import_all_features, fix_mapscales, make_polygons, update_mapindex
+from coverage_to_geodatabase import import_all_features, fix_mapscales, fix_mapacres, fix_linetypes, make_polygons, update_mapindex
 from coverage_to_anno import import_anno
 from preprocess import preprocess, merge_annotation
 
@@ -52,29 +52,34 @@ if __name__ == "__main__":
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(filename=LOGFILE, level=logging.DEBUG, format=FORMAT)
 
-    archive            = "k:\\taxmaped\\Clatsop\\towned"
+    archive            = "x:\\Applications\\GIS\\taxmaped\\Clatsop\\towned"
     #archive           = "c:\\taxmaped_BACKUPS\towned"
     workspace          = "C:\\GeoModel\\Clatsop"
     geodatabase_source = "C:\\GeoModel\\MapProduction\\ORMAP_Clatsop_Schema.gdb"
     geodatabase        = "ORMAP_Clatsop.gdb"
 
-    os.chdir(archive)
+    # Build a list of townships to be processed
 
+    saved = os.getcwd()
+    os.chdir(archive)
     # Convert the entire county
     townships = glob("t[4-9]-*")
-    # Grant project area
+    # ORMAP grant project area
     townships = ["t6-6","t6-7","t7-6","t7-7","t8-6","t8-7","t9-6","t9-7"]
     # Uncomment to select one township for testing
-    #townships = [ tfolder for tfolder in glob(os.path.join(archive,"t6-10"))]
+    #townships = ["t8-7"]
     # ...or one row of townships to include testing merging
-    #townships = [ tfolder for tfolder in glob(os.path.join(archive,"t4-*"))]
+    #townships = glob("t4-*")
     # ...or with an empty list, you can test the code outside the "for" loop...
     #townships = []
+    os.chdir(saved)
 
-    ok = True
     sourcefolder = os.path.join(workspace, "Source")
     homefolder   = os.path.join(workspace, "Workfolder")
     gdb          = os.path.join(homefolder, geodatabase) # Combined workspace
+
+    print("Writing log to %s." % LOGFILE)
+    ok = True
 
     # Make a backup copy of the cartographer's files then use the backup as the source for our work.
     # This step is totally unnecessary but it should speed up testing since the data will be on the local drive.
@@ -108,8 +113,8 @@ if __name__ == "__main__":
     logging.info("Convert annotation for %s" % township)
     merge_annotation(townships, homefolder) # Make one big coverage for each annotation group
     
-    # Adjust settings in the MXD in ArcMap to control font color and size...
-    mxdname = os.path.join(workspace, "Annotation.mxd")
+    # Before you get here, use Arcmap to adjust settings in the MXD to control font color and size...
+    mxdname = os.path.join(homefolder, "Annotation.mxd")
     if not os.path.exists(mxdname):
         logging.error("MXD \"%s\" not found." % mxdname)
     else:
@@ -117,15 +122,19 @@ if __name__ == "__main__":
         pass
 
     saved = arcpy.env.workspace
-    arcpy.env.workspace = os.path.join(gdb, "TaxlotsFD")
+    arcpy.env.workspace = os.path.join(gdb, "taxlots_fd")
 
-    make_polygons("TaxcodeLines", "TaxcodePoints", "Taxcode")
-    make_polygons("TaxlotLines", "TaxlotPoints", "Taxlot")
-    make_polygons("MapIndexLines", "MapIndexPoints", "MapIndex")
-    update_mapindex(os.path.join(arcpy.env.workspace, "MapIndex"))
+    make_polygons("mapindex_lines", "mapindex_points", "mapindex")
+    make_polygons("taxcode_lines",  "taxcode_points",  "taxcode")
+    make_polygons("taxlot_lines",   "taxlot_points",   "taxlot")
+
+    update_mapindex("mapindex")
+
+    fix_mapscales(["mapindex"])
+    fix_mapacres("taxlot")
+    fix_linetypes(["taxlot"])
+
     arcpy.env.workspace = saved
-
-    fix_mapscales(gdb, ["MapIndex"])
 
     if ok: 
         print("All done!")
