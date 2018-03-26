@@ -1,11 +1,10 @@
 *.pyc
 *~
 *.xml
-*.xml
-*.xml
-*.xml
-*.xml
-*.xml
-*.xml
+*.pdf
+*.pyd
 *.xml
 .spyproject
+*.log
+.vs/
+*.wat
