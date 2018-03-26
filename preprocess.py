@@ -183,14 +183,8 @@ def preprocess(codefolder, sourcefolder, workfolder):
         "04-tmptaxmap2",
         
         "05-annotation",        
-
-        # These are all basically the same code, but I am not up to refactoring them today.
-        # They can execute in any order as long as it's after tmptaxmap2 and taxbound get built
+        "06-lines",
         "06-cornerpoints",
-        "06-cartolines",
-        "06-plsslines",
-        "06-reflines",
-        "06-waterlines",
 
         ]
     saved = os.getcwd()
