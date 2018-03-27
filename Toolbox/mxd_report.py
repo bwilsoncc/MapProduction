@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Dec 29 09:38
-
 Borrowed from the ESRI "ElementReport.py" script.
 
-@author: bwilson
+Created on Dec 29 09:38
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
 """
 from __future__ import print_function
 import arcpy

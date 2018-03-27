@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Convert and combine data for all townships.
-
-@author: bwilson
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
 """
 from __future__ import print_function
 import os, sys, subprocess, logging
@@ -79,6 +78,7 @@ if __name__ == "__main__":
     gdb          = os.path.join(homefolder, geodatabase) # Combined workspace
 
     print("Writing log to %s." % LOGFILE)
+    logging.info("----------- CONVERSION STARTING -------------")
     ok = True
 
     # Make a backup copy of the cartographer's files then use the backup as the source for our work.
@@ -140,5 +140,6 @@ if __name__ == "__main__":
         print("All done!")
     else:
         print("We finished with errors!")
+    logging.info("Conversion completed.")
 
 # That's all!

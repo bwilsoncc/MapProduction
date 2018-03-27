@@ -3,7 +3,7 @@
 A class for managing ORMAPNUMs
 
 Created on Thu Dec 14 11:16:07 2017
-@author: Brian Wilson
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
 """
 from __future__ import print_function
 import struct

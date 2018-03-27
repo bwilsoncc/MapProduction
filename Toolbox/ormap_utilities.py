@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Dec 20 10:41:09 2017
-
 A collection of utilities to help the map production.
 
-@author: bwilson
+Created on Wed Dec 20 10:41:09 2017
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
 """
 from __future__ import print_function
 import os, sys

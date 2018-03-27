@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-# ---------------------------------------------------------------------------
-# convert_to_anno.py
-# Created on: 2018-02-02 16:29:52.00000
-# Description:
-# Convert annotation coverages to geodatabase annotation feature classes
-# ---------------------------------------------------------------------------
+"""
+Convert annotation coverages to geodatabase annotation feature classes
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
+"""
 from __future__ import print_function
 import arcpy
 from arcpy import mapping as MAP

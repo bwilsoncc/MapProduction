@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Dec 19 15:43:00 2017
-
-@author: bwilson
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
 """
 from __future__ import print_function
 import arcpy

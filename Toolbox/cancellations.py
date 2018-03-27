@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Dec 18 09:54:02 2017
-
-@author: bwilson
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
 """
 from __future__ import print_function
 import xlrd

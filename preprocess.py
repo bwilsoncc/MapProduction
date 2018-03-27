@@ -4,8 +4,6 @@ Run the AML code that does the preprocessing steps.
 This modifies the coverages so that they are ready to be imported into the geodatabase.
 (It creates a copy of each coverage and then modifies the copy.)
 
-This corresponds to "Step 3" in my notes.
-
 @author: Brian Wilson <bwilson@co.clatsop.or.us>
 """
 from __future__ import print_function

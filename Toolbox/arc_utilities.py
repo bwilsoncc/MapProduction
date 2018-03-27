@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-#
-#  Wrappers for ESRUI arcpy functions to make them more usable.
-#  Written by bwilson for Clatsop County GIS
-#
+"""
+Wrappers for ESRUI arcpy functions to make them more usable.
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
+"""
 from __future__ import print_function
 import os
 import arcpy

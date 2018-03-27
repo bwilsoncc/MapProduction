@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-# ---------------------------------------------------------------------------
-# convert_to_geodatabase.py
-# Created on: 2018-01-10 15:29:52.00000
-# Description:
-# Convert coverages features to geodatabase feature classes
-# ---------------------------------------------------------------------------
+"""
+convert_to_geodatabase.py
+Created on: 2018-01-10 15:29:52.00000
+Description: Convert coverages features to geodatabase feature classes
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
+"""
 from __future__ import print_function
 import arcpy
 import os, logging
