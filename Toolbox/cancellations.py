@@ -122,10 +122,10 @@ if __name__ == "__main__":
     # unit tests
     
     test_make_table()
-    #test_taxlot_sorting()
-    #lst = test_reader("8.10.8")
-    #lst = test_reader("8.10.8*")
-    #lst = test_reader("8.10.25*")
-    #test_sorter(lst)
+    test_taxlot_sorting()
+    lst = test_reader("8.10.8")
+    lst = test_reader("8.10.8*")
+    lst = test_reader("8.10.25*")
+    test_sorter(lst)
     
 # That's all!

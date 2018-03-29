@@ -57,7 +57,7 @@ def posttaxmap(fc):
                 continue
 
         # calc page number from ormapnum
-            row[PAGENAME] = orm.shorten()
+            row[PAGENAME] = orm.short
             cursor.updateRow(row)
             pass
     return

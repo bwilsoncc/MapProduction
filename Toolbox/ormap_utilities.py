@@ -59,7 +59,7 @@ def list_ormapnumbers(featureclass, ormapnum_fieldname):
         for row in cursor:
             if row[0]:
                 orm.unpack(row[0])
-                d_val[row[0]] = orm.shorten()
+                d_val[row[0]] = orm.short
 
     return [d_val[k] for k in sorted(d_val)]
  

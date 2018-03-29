@@ -162,7 +162,7 @@ def posttaxmap(workfolder):
                 continue
 
         # calc page number from ormapnum
-            row[PAGENAME] = orm.shorten()
+            row[PAGENAME] = orm.short
             cursor.updateRow(row)
             pass
     return
@@ -174,7 +174,6 @@ def preprocess(codefolder, sourcefolder, workfolder):
 
         "02-taxbound",
 
-        "03-mapindex",
         "03-taxcode",
         "03-taxlot",
 

@@ -97,6 +97,7 @@ class ormapnum(object):
             
         return s
 
+    @property
     def shortmaptitle(self):
         """ Return text string usable for short title.
         Example: 8 08 01 AA """
@@ -112,6 +113,7 @@ class ormapnum(object):
 
         return smt
 
+    @property
     def longmaptitle(self):
         """ Return text string usable for long titles.
         Example: SE 1/4 SE 1/3 SEC.16 T8N R10W WM """
@@ -137,23 +139,32 @@ class ormapnum(object):
 
         return lmt
     
-    def shorten(self):
+    @property
+    def short(self):
         """ Return a shortened format that's easier to read and sort. """
-       
         shortie = "%d %02d" % (self.township, self.range)
-        
         section = self.section
         if section > 0: 
             shortie += " %d" % section
-
         shortie += self.qq()
+        if self.mapsuffixtype != '0':
+            shortie += " %s%s" % (self.mapsuffixtype,self.mapsuffixnumber)
+        return shortie
 
+    @property
+    def dotted(self):
+        """ Return the old dotted format that's used in the cancelled taxlots spreadsheet """
+        shortie = "%d.%d" % (self.township, self.range)
+        section = self.section
+        if section > 0: 
+            shortie += ".%d" % section
+        shortie += self.qq()
         if self.mapsuffixtype != '0':
             shortie += " %s%s" % (self.mapsuffixtype,self.mapsuffixnumber)
         return shortie
 
     def expand(self, shortie):
-        """ Unpack a shortened string like "8.10.5CD D001 into properties. """
+        """ Unpack a shortened string like "8.10.5CD D001" or "8 10 05CD" into properties. """
         mn = mapnum(shortie)
         self.county         = 4
         self.township       = int(mn.t)
@@ -275,8 +286,9 @@ if __name__ == "__main__":
         if ormapnum != sample: 
             print(" assert pack fail \"%s\" != \"%s\"" % (sample, ormapnum))
         print(ormapnum, len(ormapnum))
-        shortie = orm.shorten()
-        print("shortened", shortie)
+        shortie = orm.short
+        dottie  = orm.dotted
+        print("shortened %s dotted %s" % (shortie, dottie))
         expanded = orm.expand(shortie) 
         print("expanded", expanded, len(expanded))
         if sample != expanded: 
@@ -285,6 +297,6 @@ if __name__ == "__main__":
         #orm.ormapnumber()
         #print(mapnum)
 
-        print("short title: \"%s\"" % orm.shortmaptitle())
-        print("long title: \"%s\"" % orm.longmaptitle())
+        print("short title: \"%s\"" % orm.shortmaptitle)
+        print("long title: \"%s\"" % orm.longmaptitle)
     

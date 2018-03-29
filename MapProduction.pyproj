@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{00b18597-48c9-4e9d-b151-85f25dc6dfe2}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>conversion.py</StartupFile>
+    <StartupFile>Toolbox\ormapnum.py</StartupFile>
     <SearchPath>Toolbox\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>

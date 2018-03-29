@@ -15,8 +15,14 @@ class mapnum(object):
         self.__t = self.__r = self.__s = 0
         self.__q = ""
         self.__mapsuffix = ""
+
+        # Old dotted format
+        #mo = re.match(r'(\d+)\.(\d+)(\.(\d+)([A-D]?[A-D]?))?(\s([DST]?\d+))?', m.upper())
+
+        # New dot or space format
+        mo = re.match(r'(\d+)[\s\.](\d+)([\s\.](\d+)([A-D]?[A-D]?))?(\s([DST]?\d+))?', m.upper())
+
         try:
-            mo = re.match(r'(\d+)\.(\d+)(\.(\d+)([A-D]?[A-D]?))?(\s([DST]?\d+))?', m.upper())
             self.__t = int(mo.group(1))
             self.__r = int(mo.group(2))
             if mo.group(4):
@@ -81,7 +87,9 @@ class mapnum(object):
 if __name__ == "__main__":
     # unit tests
     
-    tests = ["8.10", "8.10 D1", "8.10.20 D2", "8.10.20A T1", "10.10.1AB T2",
+    tests = ["8 10", "8 10 D1", "8 10 20 D2", "8 10 20A T1", "10 10 1AB T2",
+             "8 10 25", "5 10 25ab", "5 2 23", "10 7 10bcd",
+             "8.10", "8.10 D1", "8.10.20 D2", "8.10.20A T1", "10.10.1AB T2",
              "8.10.25", "5.10.25ab", "5.2.23", "10.7.10bcd"]
     tested = []
     

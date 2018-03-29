@@ -64,7 +64,7 @@ if __name__ == "__main__":
     # Convert the entire county
     townships = glob("t[4-9]-*")
     # ORMAP grant project area
-    townships = ["t6-6","t6-7","t7-6","t7-7","t8-6","t8-7","t9-6","t9-7"]
+    #townships = ["t6-6","t6-7","t7-6","t7-7","t8-6","t8-7","t9-6","t9-7"]
     # Uncomment to select one township for testing
     #townships = ["t8-7"]
     # ...or one row of townships to include testing merging
