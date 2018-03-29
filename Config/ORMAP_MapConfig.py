@@ -1,6 +1,4 @@
 # ---------------------------------------------------------------------------
-# Description: This is a configuration file specifically for 18 x 24 inch maps
-
 # Cancelled Taxlot Numbers appear in a table with the numbers sorted
 # vertically. The elements in the table are a title and several columns.
 #
@@ -10,45 +8,16 @@
 # I move the group off the page to hide it, 
 # so I have to know where it should go to show it.
 CancelledTaxlotsElement = "can_group"
-CancelledTaxlotsXY = (22.17, 7.2) # anchor point center top
+CancelledTaxlotsXY = (22.1, 7.8) # this assumes anchor point center top
 
 # Each of these is a text block in the layout
-CancelledNumbersColumns = ("can1", "can2", "can3", "can4")
+CancelledNumbersColumns = ("can1", "can2", "can3", "can4", "can5")
 
-MaxCancelledRows = 100
-
-
-# There are 3 locator maps, and I move them off the layout to hide them
-# if they are not useful at the current map scale. 
-
-# When moving the locators back ONTO the page layout I have to have XY's
-
-#LocatorXY = ()
-LocatorSectionXY  = (20.45, 10.7081)
-LocatorQSectionXY = (20.4509, 7.974)
-
-# ---------------------------------------------------------------------------
-# Old stuff that probably gets ignored.
-
-DataFrameMinX= 0.4
-DataFrameMinY= 0.5
-DataFrameMaxX= 19.9 + DataFrameMinX
-DataFrameMaxY= 17.5 + DataFrameMinY
-
-TitleX=10.5
-TitleY=17.8411
-
-DisclaimerX=2.5684
-DisclaimerY=17.8128
-
-URCornerNumX=20.2
-URCornerNumY=18.0009
-
-LRCornerNumX=20.2
-LRCornerNumY=1.3113
+MaxCancelledRows = 15 # Go to 8 point font if # of rows exceeds this
 
 ScalebarXY = (22.2, 16.7)
 Scalebars = {  240:"Scalebar240",   #   50 ft
+               360:"Scalebar240",   #   80 ft
                480:"Scalebar240",   #  100 ft
                600:"Scalebar600",   #  100 ft
                720:"Scalebar4800",  #  150 ft
@@ -57,15 +26,8 @@ Scalebars = {  240:"Scalebar240",   #   50 ft
               4800:"Scalebar4800",  # 1000 ft
              24000:"Scalebar24000", # This one shows 1 mile
              }
-
-DateX=1.6711
-DateY=17.3485
-
-NorthX=0
-NorthY=0
+# use this if nothing else matches
+DefaultScalebar = Scalebars[600] 
 
 MapAngle=0
-
-# CONTROL DISTANCE BETWEEN MAPTITLE AND MAPSCALE VALUE
-MapScaleDist=0.15
 

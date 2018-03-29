@@ -8,8 +8,20 @@ import arcpy
 from arcpy import mapping as MAP
 import os, sys
 from datetime import datetime
-from ormap_utilities import ORMapLayers, ORMapPageLayout, aprint, eprint, \
-                           GetDataframe, GetLayer, set_definition_query
+from arc_utilities import aprint, eprint, SetDefinitionQuery, GetDataframe, GetLayer
+
+# =============================================================================
+# Load the "configuration files"
+# NB, force string into lower case to make sure it works in Windows
+configpath = os.path.dirname(__file__)
+if not configpath: configpath = os.getcwd()
+configpath=os.path.normcase(configpath).replace("toolbox","config")
+print("__file__=%s configpath=%s" % (__file__, configpath))
+sys.path.append(configpath)
+import ORMAP_LayersConfig as ORMapLayers
+import ORMAP_MapConfig as ORMapPageLayout
+print(ORMapLayers.__file__, ORMapPageLayout.__file__)
+                           
 from ormapnum import ormapnum
 from cancellations import read_cancelled, make_table
 
@@ -28,25 +40,6 @@ ANGLE = 0
 
 # ==============================================================================
 
-def readtable(mxd, df, tablename, fields, whereclause):
-    """ Read a table of values to be displayed as cancelled taxlot numbers. """
-    tableview = row = None
-    table = []
-    try:
-        tableview = MAP.ListTableViews(mxd, tablename, df)[0]
-    except IndexError:
-        #aprint("table=\"%s\" query=\"%s\"" % (tablename, whereclause))
-        return table
-
-    with arcpy.da.SearchCursor(tableview, fields, whereclause) as cursor:
-        try:
-            for row in cursor:
-                table.append(row)
-        except Exception as e:
-            #eprint("Cant read, %s" % e)
-            pass
-    return table
-
 def qqwhere(q, qq):
     """ Return a query string based on the quarter and quarterquarter letters 0ABCD """
     rval = "" # Nothing is highlighted
@@ -58,16 +51,6 @@ def qqwhere(q, qq):
             # One quarter quarter is highlighted
             rval = q + qq
     return rval
-
-def get_mapnumber_query(mapnumber):
-    """ Convert a short mapnumber (possibly with a wildcard in it) into a SQL query. """
-    
-    # I have to use different delimiters for different databases. Sigh.
-    mapnumber_field = ORMapLayers.MapNumberField
-    delimiter_l = '['
-    delimiter_r = ']'
-    #wildcard    = '*'
-    return "%s%s%s LIKE '%s'" % (delimiter_l, mapnumber_field, delimiter_r, mapnumber)
 
 def set_main_definition_queries(mxd, df, orm, mapnumber, mapscale, query):
     """ Set definition queries for each layer in the MapView dataframe. 
@@ -126,11 +109,11 @@ def list_scalebars(mxd):
     sb = []
     # make a list of all the scalebar elements in the map.
     for elem in MAP.ListLayoutElements(mxd, "MAPSURROUND_ELEMENT"):
-        if elem.name.find("Scalebar")>=0:
+        if elem.name.lower().find("scalebar")>=0:
             sb.append(elem)
     return sb
 
-def is_visible(elem, mxd):
+def on_page(elem, mxd):
     """ Return TRUE if the element is visible on its page layout. """
     x = elem.elementPositionX
     y = elem.elementPositionY
@@ -147,11 +130,16 @@ def is_visible(elem, mxd):
 def select_scalebar(mxd, mapscale):
     
     sb = list_scalebars(mxd) # all the scalebars in the map
-    sbname = ORMapPageLayout.Scalebars[mapscale] # the one we want
+    try:
+        sbname = ORMapPageLayout.Scalebars[mapscale] # the one we want
+    except KeyError:
+        # better to fail quietly than to up and quit
+        sbname = ORMapPageLayout.DefaultScalebar # a substitute
+        aprint("No scalebar found for %d so I am using %s instead." % (mapscale, sbname))
     visible_sb = selected_sb = None
     for elem in sb:
         # Is this scalebar visible?
-        if is_visible(elem, mxd):
+        if on_page(elem, mxd):
             print("%s is visible." % elem.name)
             visible_sb = elem
             
@@ -208,7 +196,7 @@ def update_locator_maps(mxd, orm):
                     query = eval(qd)
                 except Exception as e:
                     aprint("EVAL failed: query=\"%s\", %s" % (query, e))
-            set_definition_query(mxd, df, layername, query) 
+            SetDefinitionQuery(mxd, df, layername, query) 
 
         # Set extent (pan and zoom as needed)
         # and possibly hide the locator map
@@ -230,7 +218,7 @@ def update_locator_maps(mxd, orm):
             try:
                 fc_layer = GetLayer(mxd,df,fcount)
                 c = int(arcpy.GetCount_management(fc_layer).getOutput(0))
-                aprint("count = %d" % c)
+                #aprint("count = %d" % c)
                 if c == 0:
                     visibility = False
                     aprint("Nothing to see in layer \"%s\"." % extlayername)
@@ -272,7 +260,7 @@ def populate_cancelled_taxlot_table(mxd, dotted):
         Return the number of cancelled taxlots. """
 
     aprint("populate_cancelled_taxlot_table(mxd,\"%s\")" % dotted)        
-    arcpy.SetProgressorLabel("Populate cancelled taxlot table")
+    arcpy.SetProgressorLabel("Populating cancelled taxlot table")
         
     # Note that this function is not affected by any query definition.
     cancelled_taxlots = read_cancelled(ORMapLayers.CancelledNumbersTable, dotted)
@@ -298,7 +286,7 @@ def populate_cancelled_taxlot_table(mxd, dotted):
 
         # Adjust the font size of the table according to the number of rows
         fontsize = 10
-        maxrows = 10 # ORMapPageLayout.MaxCancelledRows
+        maxrows = ORMapPageLayout.MaxCancelledRows
         if max_y > maxrows: fontsize = 8
 
         x = 0
@@ -326,7 +314,7 @@ def update_page_layout(mxd, pagename):
     
     orm = ormapnum()
     orm.expand(pagename)
-    aprint("%s -> %s -> %s" % (pagename, orm.dotted, orm.longmaptitle))
+    #aprint("%s -> %s -> %s" % (pagename, orm.dotted, orm.longmaptitle))
 
     update_page_elements(mxd, maindf, orm)
     update_locator_maps(mxd, orm)
@@ -335,17 +323,11 @@ def update_page_layout(mxd, pagename):
 
     return
 
-def test_layouts():
-    for mapnumber in ["8 10", "8 10 5CD", "8 10 5CD D1", "8 10 5CD D2", ]:
-        #mapnumber = "0408.00N10.00W05CD--0000"
-        #mapnumber = "0408.00N10.00W05CD--D001"
-        #mapnumber = "0408.00N10.00W05CD--D002"
-
-        print("mxdname: %s mapnumber: %s" % (mxdname, mapnumber))
-        mxd = MAP.MapDocument(mxdname)
-        update_page_layout(mxd, mapnumber)
-        del mxd    
-
+def test_layouts(mxd):
+    for pagename in ["8 10 8BB", "8 10 5CD", "8 10 5CD D1", "8 10 5CD D2", ]:
+        print("pagename: %s" % pagename)
+        update_page_layout(mxd, pagename)
+ 
 # ======================================================================
 
 if __name__ == '__main__':
@@ -355,11 +337,12 @@ if __name__ == '__main__':
         mapnumber=sys.argv[1]
     except IndexError:
         # Run in the debugger
-        mxdname = "TestMap.mxd"
+        mxdname = "C:\\GeoModel\\Clatsop\\Workfolder\\TestMap.mxd"
     
-    #mxd = MAP.MapDocument(mxdname)
+    mxd = MAP.MapDocument(mxdname)
     #select_scalebar(mxd, 24000)
-    #del mxd
-    test_layouts()
+    test_layouts(mxd)
+    del mxd
 
+    print("Tests completed.")
 # That's all

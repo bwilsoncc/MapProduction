@@ -111,7 +111,7 @@ if __name__ == "__main__":
         def addMessage(self, message):
             print(message)
 
-    mxdname = "TestMap.mxd"
+    mxdname = "C:\\GeoModel\\Clatsop\\Workfolder\\TestMap.mxd"
     output  = "C:\\TempPath\\TestMap_report.txt"
 
     repo = MXDReport()
@@ -120,5 +120,7 @@ if __name__ == "__main__":
     params[0].value = mxdname
     params[1].value = output
     repo.execute(params, Messenger())
+
+    print("Unit test completed.")
     
 # That's all!

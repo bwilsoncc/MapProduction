@@ -7,8 +7,8 @@ from __future__ import print_function
 import os
 import arcpy
 from arcpy import mapping as MAP
-import printMaps
-from ormap_utilities import ORMapLayers, GetDataframe, GetLayer, list_ormapnumbers
+from printMaps import print_maps
+from arc_utilities import ListPagenames
 
 class PrintMaps(object):
     """This class has the methods you need to define
@@ -69,14 +69,8 @@ class PrintMaps(object):
         mxd_filepath = ""
         try:
             mxd = MAP.MapDocument(self.mxdname)
-            df = GetDataframe(mxd, ORMapLayers.MainDF)
-
-            layer = GetLayer(mxd, df, ORMapLayers.MapIndexLayer[0])
-            # Using the datasource instead of the layer avoids problems if there is a definition query.
-            map_number.filter.list = list_ormapnumbers(layer.dataSource, ORMapLayers.ORMapNumberField)
-
+            map_number.filter.list = ListPagenames(mxd)
             mxd_filepath = os.path.split(mxd.filePath)[0]
-
             del mxd
         except Exception as e:
             arcpy.AddMessage("%s. \"%s\"" % (e,self.mxdname))
@@ -149,7 +143,9 @@ class PrintMaps(object):
         
         # Okay finally go ahead and do the work.
         mxd = MAP.MapDocument(self.mxdname)
-        printMaps.print_maps(mxd, map_numbers, output_type, str(output_file))
+        print_maps(mxd, map_numbers, output_type, str(output_file))
+        del mxd
+
         return
 
 # =============================================================================
@@ -160,28 +156,13 @@ if __name__ == "__main__":
         def addMessage(self, message):
             print(message)
 
-    mxdname   = "TestMap.mxd"
-    
-    #mxd = MAP.MapDocument(mxdname)
-    #df = get_dataframe(mxd, ORMapLayers.MainDF)
-    #print(df.name)
-    #layer = get_layer(mxd, df, ORMapLayers.MAPINDEX_LAYER)
-    #print(layer.dataSource)
-    ## Using the datasource instead of the layer itself avoids 
-    ## problems with a definition query.
-    #l = list_mapnumbers(layer.dataSource, "MapNumber")
-    #print(l)
-    #del mxd
-
-    # This is only a test.
+    mxdname = "C:/GeoModel/Clatsop/Workfolder/TestMap.mxd"
     pmo = PrintMaps()
     pmo.mxdname = mxdname # Override "CURRENT" for standalone test
     params = pmo.getParameterInfo()
-    params[0].value = "8.10.5CD D2;8.10.5CD D1;8.10.5CD"
+    params[0].value = "8 10 5CD D2;8 10 5CD D1;8 10 5CD"
     params[1].value = "JPEG"
-    params[2].value = r"C:\TempPath\test.jpg"
-#    for p in params:
-#        print(p.name, p.value, p.filter.list)
+    params[2].value = r"C:\TempPath\printmap-unittest-.jpg"
     pmo.execute(params, Messenger())
 
 # That's all!

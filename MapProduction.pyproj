@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{00b18597-48c9-4e9d-b151-85f25dc6dfe2}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>Toolbox\ormapnum.py</StartupFile>
+    <StartupFile>Toolbox\MXDReport_tool.py</StartupFile>
     <SearchPath>Toolbox\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -43,13 +43,9 @@
     <Compile Include="Toolbox\arc_utilities.py" />
     <Compile Include="Toolbox\cancellations.py" />
     <Compile Include="Toolbox\mapnum.py" />
-    <Compile Include="Toolbox\mxdrepair.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Toolbox\MXDReport_tool.py" />
     <Compile Include="Toolbox\mxd_report.py" />
     <Compile Include="Toolbox\ormapnum.py" />
-    <Compile Include="Toolbox\ormap_utilities.py" />
     <Compile Include="Toolbox\printMaps.py" />
     <Compile Include="Toolbox\PrintMaps_tool.py" />
     <Compile Include="Toolbox\zoomToMapNumber.py" />

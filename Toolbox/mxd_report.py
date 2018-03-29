@@ -16,11 +16,6 @@ def header(mxd):
     print()
 
 def show_layer(lyr):
-    # Show ONLY layers with a query.
-    #if not(lyr.supports("DEFINITIONQUERY") and lyr.definitionQuery): return
-
-    rcount = 0
-
     space = True
     isfeature = False
     isgroup   = False
@@ -42,27 +37,14 @@ def show_layer(lyr):
         
     islabel = False # Is this a word? :-)
     if lyr.supports("LABELCLASSEs"): islabel = True
-
         
     print(msg+"Layer: %s" % lyr.longName)
 
     if lyr.supports("DATASOURCE"):
-
-#        # A hack to repair the anno template
-#        oldp = "C:\\GeoModel\\Clatsop\\convertii"
-#        newp = "C:\\GeoModel\\Clatsop\\Workfolder"
-#        if lyr.dataSource.find(oldp)==0:
-#            try:
-#                lyr.findAndReplaceWorkspacePath(oldp, newp, validate=False)
-#                print("\t Source has been set to %s" % lyr.dataSource)
-#                rcount = 1
-#            except ValueError:
-#                print("Replace failed, %s => %s" % (oldp, newp))
-            
         print("\t%s" % lyr.dataSource)
         
     if lyr.supports("SHOWLABELS"): 
-            print("\tShow labels: ON")
+        print("\tShow labels: ON")
     
     if not lyr.visible: 
         #print("\tVisible: NO")
@@ -73,21 +55,16 @@ def show_layer(lyr):
         pass
         
     if space: print()
-    
-    return rcount
 
 def show_layers(mxd, df):
     print("    Layers:")
-    rcount = 0
     for lyr in MAP.ListLayers(mxd, "", df):
-        rcount += show_layer(lyr)
+        show_layer(lyr)
     print()
-    return rcount
     
 def show_dataframes(mxd):
     # Use the list of data frames so report order will be correct.
     l_df = MAP.ListDataFrames(mxd)
-    rcount = 0
     print(" DATA FRAMES:")
     for df in l_df:
         elm = MAP.ListLayoutElements(mxd, wildcard=df.name)[0]
@@ -98,8 +75,7 @@ def show_dataframes(mxd):
         print("    Width:               " + str(elm.elementWidth))
         print()
         
-        rcount += show_layers(mxd, df)
-    return rcount
+        show_layers(mxd, df)
     
 def show_layout_element(mxd, element_name):
     
@@ -131,7 +107,7 @@ def report(mxd):
     header(mxd)
 
     rcount = show_dataframes(mxd)
-    return
+
     for e in ["TEXT_ELEMENT", 
               "PICTURE_ELEMENT", 
               "GRAPHIC_ELEMENT",
@@ -142,24 +118,9 @@ def report(mxd):
     return rcount
 
 if __name__ == "__main__":
-
-    gdb = "C:/GeoModel/Clatsop/ORMAP-SchemaN_08-21-08/ORMAP-SchemaN_08-21-08.mdb/TaxlotsFD"
-    arcpy.env.workspace = gdb
-    for anno in arcpy.ListFeatureClasses("", "ANNOTATION"):
-        print(anno)
-    pass
-
-    mxdname = "TestMap.mxd"
-    #mxdname = "C:/GeoModel/Clatsop/AnnoTemplate.mxd"
- 
+    mxdname = "c:/GeoModel/Clatsop/Workfolder/TestMap.mxd"
     mxd = MAP.MapDocument(mxdname)
-    rcount = report(mxd)
-
-    if rcount>0:
-        print("MXD has been modified.")
-        #mxd.save()
-        pass
+    report(mxd)
     del mxd
     
-# That's a;;!
-
+# That's all!

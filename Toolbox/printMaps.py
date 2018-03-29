@@ -11,13 +11,13 @@ import os, sys
 from zoomToMapNumber import update_page_layout
 from time import sleep
 
-def print_map(mxd, map_number, output_type, output_file):
+def print_map(mxd, pagename, output_type, output_file):
     """Set up a page and print it. """
     
-    msg = "Adjusting layout for %s" % map_number
+    msg = "Adjusting layout for %s" % pagename
     arcpy.SetProgressorLabel(msg)
         
-    update_page_layout(mxd, map_number)
+    update_page_layout(mxd, pagename)
     
     if os.path.exists(output_file):
         os.unlink(output_file)
@@ -37,32 +37,25 @@ def print_map(mxd, map_number, output_type, output_file):
         except Exception as e:
             print("Export to JPEG failed with '%s'." % e)
             pass
-    else:
-        print("Here is where we'd actually send the map to a printer.")
         
     return
 
-def print_maps(mxd, map_numbers, output_type, output_pathname):
+def print_maps(mxd, pagenames, output_type, output_pathname):
     """Set up each page and print it. """
-
-    output_path = "C:\\TempPath"
-    output_file = "output"
 
     if output_type == "PDF":
         output_ext = ".pdf"
-    elif output_type == "JPEG":
-        output_ext = ".jpg"
     else:
-        output_ext = ".prn"
+        output_ext = ".jpg"
         
     arcpy.AddMessage("output_pathname = %s" % output_pathname)
     (output_path, output_fileext) = os.path.split(output_pathname)
     (output_file, output_ext)     = os.path.splitext(output_fileext)
 
-    l_map_numbers = map_numbers.split(';')
+    l_pagenames = pagenames.split(';')
 
     start    = 0
-    maxcount = len(l_map_numbers)
+    maxcount = len(l_pagenames)
     step     = 1
     
     if maxcount>1:
@@ -70,19 +63,18 @@ def print_maps(mxd, map_numbers, output_type, output_pathname):
     else:
         arcpy.SetProgressor("default", "Printing %s" % l_map_numbers[0])
         
-    print("Output type:", output_type)
     t = 0
     # ESRI likes to wrap parameters strings in quotes, for some unknown reason.
-    for mn in l_map_numbers:
-        mapnum = mn.strip("\"'")
-        pathname = os.path.join(output_path, output_file + '_' + mapnum + output_ext)
+    for mn in l_pagenames:
+        pagename = mn.strip("\"'")
+        filename = output_file + pagename.replace(' ', '-')
+        pathname = os.path.join(output_path, filename + output_ext)
         print("Output file:", pathname)
-        print("Map number: %s" % mapnum)
-        print_map(mxd, mapnum, output_type, pathname)
+        print_map(mxd, pagename, output_type, pathname)
 
         t += 1
         arcpy.SetProgressorPosition(t)
-    sleep(3) # Give ArcMap a chance to catch up with us.
+        sleep(3) # Give ArcMap a chance to catch up with us. Superstition.
 
     return
 
@@ -95,16 +87,17 @@ if __name__ == '__main__':
     try:
         # Try to run as a python script (from ArcMap)
         mxdname = "CURRENT"
-        map_numbers = sys.argv[1]
+        pagenames = sys.argv[1]
         output_type = sys.argv[2]
         output_file = sys.argv[3]
     except IndexError:
         # No go, run from debugger (perhaps)
-        mxdname = "TestMap.mxd"
-        map_numbers = "8.10.8BB;8.10.25*"
-        output_file = os.path.join(os.environ["TEMP"],"output.jpg")
+        mxdname = "C:\\GeoModel\\Clatsop\\Workfolder\TestMap.mxd"
+        pagenames = "8 10 8BB;8 10 25"
+        output_file = os.path.join(os.environ["TEMP"],"printmap-unittest-.jpg")
         output_type = "JPEG"
     mxd = MAP.MapDocument(mxdname)
-    print_maps(mxd, map_numbers, output_type, output_file)
+    print_maps(mxd, pagenames, output_type, output_file)
     del mxd
+    print("Tests completed.")
 # That's all

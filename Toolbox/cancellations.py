@@ -15,8 +15,8 @@ def read_cancelled(xlfile, query_mapnum):
     
     # Make simple query into a regular expression
     regex = '^' + query_mapnum.replace('.','\.').replace("*","[ABCD]?[ABCD]?") + '$'
-    print(regex)
-    lst = []
+    #print(regex)
+    d_sortable = {} # Use a dict to squash duplicates
     wb = xlrd.open_workbook(xlfile)
     #print(wb.get_sheet_names()[0])
     ws = wb.sheet_by_index(0)
@@ -25,8 +25,10 @@ def read_cancelled(xlfile, query_mapnum):
         if mapnum:
             mo = re.search(regex, mapnum)
             if mo:
-                lst.append(ws.cell(row_index, 1).value)
-    return lst
+                cell = ws.cell(row_index, 1).value.strip()
+                d_sortable[make_sortable(cell)] = cell
+    
+    return [d_sortable[k] for k in sorted(d_sortable)]
 
 ret = re.compile(r'(\d*)(.*)')
 
@@ -41,14 +43,6 @@ def make_sortable(taxlotno):
         sortable = "%06d%s" % (int(n),s.strip())
     return sortable
 
-def test_taxlot_sorting():
-    ltl = [ "WATER", "300", "600M1", "600M2", "6000", "700", "600", "8", "800", "ROAD", "601M1", "600K"]
-    ltl = ["101A", "1200", "2703", "501", "902", "503"]
-    stl = []
-    for tl in ltl:
-        stl.append((make_sortable(tl), tl))
-    for tl in sorted(stl):
-        print("%s" % tl[1])
 
 def make_table(seq, columns):
     """ Break the sequence into 'n' columns and return them. """
@@ -88,11 +82,12 @@ def make_text_table(seq, columns):
     return table
 
 def test_make_table():
-    maxy,columns = make_table([1,2,3,4, 5,6,7,8, 9,10,11,12], 4)
+    maxc = 5
+    maxy,columns = make_table([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], maxc)
     for column in columns:
         print(column)
 
-    maxy,columns = make_table([1,2,3,4, 5,6,7,8, 9,10,11,12, 1,2,3,4, 5,6,7,8, 9,10,11,12, 1,2,3,4, 5,6,7,8, 9,10,11,12, 1,2,3,4, 5,6,7,8, 9,10,11,12, ], 4)
+    maxy,columns = make_table([1,2,3,4, 5,6,7,8, 9,10,11,12, 1,2,3,4, 5,6,7,8, 9,10,11,12, 1,2,3,4, 5,6,7,8, 9,10,11,12, 1,2,3,4, 5,6,7,8, 9,10,11,12, ], maxc)
     print("max y=",maxy)
     for column in columns:
         print(column)
@@ -103,29 +98,35 @@ def test_reader(q):
     return l_cancelled
 
 def test_sorter(l_cancelled):
-    print("Cancelled accounts")    
-    l_sortable = []
+    d_sortable = {}
     for item in l_cancelled:
-        l_sortable.append((make_sortable(item), item))
+        d_sortable[make_sortable(item)] = item
 
-    l_sorted = []
-    for tl in sorted(l_sortable):
-        l_sorted.append(tl[1])
-    #print(l_sorted)
+    l_sorted = [d_sortable[k] for k in sorted(d_sortable)]
+    print(l_sorted)
 
-    maxy,columns = make_table(l_sorted, 4)
+    maxy,columns = make_table(l_sorted, 5)
     for column in columns:
         print(column)
+
+def test_taxlot_sorting():
+    test_sorter([ "WATER", "300", "600M1", "600M2", "6000", "700", "600", "8", "800", "ROAD", "601M1", "600K"])
+    test_sorter(["101A", "1200", "2703", "501", "902", "503", "503", "503", "503"])
     
 # =============================================================================
 if __name__ == "__main__":
     # unit tests
     
-    test_make_table()
     test_taxlot_sorting()
-    lst = test_reader("8.10.8")
+    test_make_table()
+
+    lst = test_reader("8.10.8BB")
+    print(lst)
+
     lst = test_reader("8.10.8*")
-    lst = test_reader("8.10.25*")
-    test_sorter(lst)
+    print(lst)
     
+    lst = test_reader("8.10.25*")
+    print(lst)
+
 # That's all!

@@ -11,7 +11,6 @@ import os, logging
 import re
 from Toolbox.arc_utilities import ListFieldNames, DeleteFC, AddField
 from ormapnum import ormapnum
-from ormap_utilities import dict_ormapnumbers
 
 # ========================================================================
 
@@ -123,9 +122,6 @@ def update_mapindex(fc):
         AddField(fc, "LongMapTitle", "TEXT", fieldlen=50)
 
         orm = ormapnum()
-
-        # Get page numbers
-        #d_pagenum = dict_ormapnumbers(fc, "OrMapNum")
 
         fields = ["ORMapNum", "ShortMapTitle", "LongMapTitle", "OID@"]
         ORMAPNUM = 0

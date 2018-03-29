@@ -64,51 +64,41 @@ def GetLayer(mxd, df, layername):
     except IndexError:		
         print("Can't find layer \"%s\"/\"%s\"." % (df.name, layername))		
     return layer
- 
-# ---------------------------------------------------------------------
-def dump_fields():
-    with open("s.csv","w") as fp:
-        for t in [
-                ("taxmapan", "taxmapanno"),
-                ("taxlotan", "taxlotanno"),
-                ("taxcodan", "taxcodanno"),
-                ]:
-            for ws in t:
-                print("workspace:", ws)
-                arcpy.env.workspace = os.path.join("C:\\GeoModel\\Clatsop\\Workfolder\\t4-6", ws)
-                for fc in ["annotation.igds", "arc", "point"]:
-                    if arcpy.Exists(fc):
-                        l = ListFieldNames(fc)
-                        ls = [str(item) for item in l]
-                        rval = "%s, %s" % (ws, fc)
-                        for item in ls:
-                            rval += ", %s" %item
-                        print(rval)
-                        rval += "\n"
-                        fp.write(rval)
 
-    return
+def SetDefinitionQuery(mxd, df, layername, query):
+    """ Set the definition query on a layer. """
+    if df:
+        layer = GetLayer(mxd, df, layername)
+        if not layer: return False
+        try:
+            layer.definitionQuery = query
+        except Exception as e:
+            aprint("Can't set query \"%s\" on layer \"%s\"/\"%s\". \"%s\"" % (query, df.name, layername, e))
+            return False
+    return True
+ 
+def ListPagenames(mxd):
+    """ Given an mxd for a map document with Data Driven Pages,
+    Return a list of pagenames from that doc. """
+    try:
+        maindf = mxd.dataDrivenPages.dataFrame
+        ddp_layer = mxd.dataDrivenPages.indexLayer
+    except Except as e:
+        aprint("Can't get ddp layer, %s" % e)
+    pagename = mxd.dataDrivenPages.pageNameField
+    d_val = {}
+    # Using the datasource instead of the layer avoids problems if there is a definition query.
+    with arcpy.da.SearchCursor(ddp_layer.dataSource, [pagename.name]) as cursor:
+        for row in cursor:
+            d_val[row[0]] = 1
+    return sorted(d_val)
+
+# ---------------------------------------------------------------------
 
 if __name__ == "__main__":
-    
-    dump_fields()
 
-    arcpy.env.workspace = "C:\\GeoModel\\MapProduction\\ORMAP_Clatsop_Schema.gdb\\TaxlotsFD"
-    if arcpy.Exists("Taxlot"):
-        l = ListFieldNames("Taxlot")
-        print(l)
-
-        aprint("Unit test aprint")
-        eprint("Unit test eprint")      
-
-    arcpy.env.workspace = "C:\\GeoModel\\Clatsop\\Workfolder\\ORMAP_Clatsop.gdb\\TaxlotsFD"
-    if arcpy.Exists("MapIndex"):
-        AddField("MapIndex", "PageNumber", "LONG")
-        AddField("MapIndex", "PageName",   "TEXT", fieldlen=50)
-        l = ListFieldNames("MapIndex")
-        print(l)
-
-    mxdname = "TestMap.mxd" # Often set to "CURRENT"
+    workfolder = "C:\\GeoModel\\Clatsop\\Workfolder"
+    mxdname = os.path.join(workfolder, "TestMap.mxd") # Often set to "CURRENT"
     if os.path.exists(mxdname):
         dfname = "MapView"
         layername = "MapIndex"
@@ -116,6 +106,26 @@ if __name__ == "__main__":
         df = GetDataframe(mxd, dfname)
         layer = GetLayer(mxd, df, layername)
         aprint("layer.dataSource=%s"%layer.dataSource)
+
+        lst = ListPagenames(mxd)
+        aprint(lst)
+
         del mxd
-  
+    
+    arcpy.env.workspace = "C:\\GeoModel\\MapProduction\\ORMAP_Clatsop_Schema.gdb\\TaxlotsFD"
+    if arcpy.Exists("Taxlot"):
+        l = ListFieldNames("Taxlot")
+        print(l)
+
+    aprint("Unit test aprint")
+    eprint("Unit test eprint")      
+
+    arcpy.env.workspace = os.path.join(workfolder, "ORMAP_Clatsop.gdb\\TaxlotsFD")
+    if arcpy.Exists("MapIndex"):
+#        AddField("MapIndex", "PageNumber", "LONG")
+#        AddField("MapIndex", "PageName",   "TEXT", fieldlen=50)
+        l = ListFieldNames("MapIndex")
+        print(l)
+
+    print("Tests completed.")
 # That's all

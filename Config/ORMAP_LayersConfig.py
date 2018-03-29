@@ -24,34 +24,6 @@ ANNO_QD    = "\"" + __base_qd + " AND ([MapScale]={1} OR [MapScale]={1}/12)\".fo
 MapNumberField = "MapNumber"
 ORMapNumberField = "OrMapNum"
 
-##### MAIN DATA FRAME #####
-
-MainDF = "MapView"
-MainLayers=[
-    ("MapIndex",           "\"[OrMapNum] =  '{0}'\".format(orm.ormapnumber)"),
-#    ("MapIndex - SeeMaps", "\"[OrMapNum] <> '{0}'\".format(orm.ormapnumber)"),
-#    ("MapIndex - Mask",    "\"[OrMapNum] <> '{0}'\".format(orm.ormapnumber)"),
-
-    # Setting the query to "" means you want to clear any definition query that might be set in the MXD.
-    # If you don't want a layer's query ERASED then don't list it with a query of "".
-    
-#   ("Corner - Above",            ""),
-#   ("TaxCodeLines - Above",      ""),
-#   ("ReferenceLines - Above",    ""),
-#   ("CartographicLines - Above", ""),
-#   ("WaterLines - Above",        ""),
-#   ("Water - Above",             '"[WaterType]<>\'Land\'"')
-
-#   ("Corner - Below",            ""),
-#   ("TaxCodeLines - Below",      ""),
-#   ("TaxlotLines - Below",       ""),
-#   ("ReferenceLines - Below",    ""),
-#   ("CartographicLines - Below", ""),
-#   ("WaterLines - Below",        ""),
-#    ("Water",                    '"[WaterType]<>\'Land\'"'),
-]
-MapIndexLayer = MainLayers[0]
-
 ##### locator map data frame #####
 LocatorDF = "LocatorDF"
 LocatorScale = 800000

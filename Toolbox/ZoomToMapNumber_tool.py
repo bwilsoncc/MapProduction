@@ -7,7 +7,7 @@ from __future__ import print_function
 import arcpy
 from arcpy import mapping as MAP
 import zoomToMapNumber
-from ormap_utilities import ORMapLayers, GetDataframe, GetLayer, list_ormapnumbers
+from arc_utilities import ListPagenames
 
 class ZoomToMapNumber(object):
     """This class has the methods you need to define
@@ -37,12 +37,7 @@ class ZoomToMapNumber(object):
         map_number.value = ""
         try:
             mxd = MAP.MapDocument(self.mxdname)
-            df = GetDataframe(mxd, ORMapLayers.MainDF)
-
-            layer = GetLayer(mxd, df, ORMapLayers.MapIndexLayer[0])
-            # Using the datasource instead of the layer avoids problems if there is a definition query.
-            map_number.filter.list = list_ormapnumbers(layer.dataSource, ORMapLayers.ORMapNumberField)
-            
+            map_number.filter.list = ListPagenames(mxd)
             map_number.value = map_number.filter.list[0]
             del mxd
         except Exception as e:
@@ -96,29 +91,15 @@ if __name__ == "__main__":
         def addMessage(self, message):
             print(message)
 
-    mxdname   = "TestMap.mxd"
-    
-    #mxd = MAP.MapDocument(mxdname)
-    #df = get_dataframe(mxd, ORMapLayers.MainDF)
-    #print(df.name)
-    #layer = get_layer(mxd, df, ORMapLayers.MAPINDEX_LAYER)
-    #print(layer.dataSource)
-    ## Using the datasource instead of the layer itself avoids 
-    ## problems with a definition query.
-    #l = list_mapnumbers(layer.dataSource, "MapNumber")
-    #print(l)
-    #del mxd
-
-    # This is only a test.
+    mxdname   = "C:/GeoModel/Clatsop/Workfolder/TestMap.mxd"
     zoomo = ZoomToMapNumber()
     zoomo.mxdname = mxdname # Override "CURRENT" for standalone test
     params = zoomo.getParameterInfo()
-    
-    for mapnum in ["8.10.5CD", "8.10.5CD D1", "8.10.5CD D2", ]:
+ 
+    for mapnum in ["8 10 5CD", "8.10.5CD D1", "8.10.5CD D2", ]:
         params[0].value = mapnum
-        result = "0408.00N10.00W05CD--0000"
         zoomo.execute(params, Messenger())
 
-    pass
+    print("Tests completed.")
 
 # That's all!
