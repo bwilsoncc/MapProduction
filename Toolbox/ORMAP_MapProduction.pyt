@@ -1,19 +1,18 @@
-#!/usr/bin/python
+# -*- coding: utf-8 -*-
 """
 ORMap Map Production python toolbox
 Created on Tue Dec 19 15:43:00 2017
-
-@author: bwilson
+@author: Brian Wilson <bwilson@co.clatsop.or.us>
 """
 from __future__ import print_function
 import arcpy
 
-__version__ = "3"
+__version__ = "4"
 
 # Import all the tool classes that will be included in this toolbox.
-from ZoomToMapNumber_tool import ZoomToMapNumber
-from PrintMaps_tool import PrintMaps
-from MXDReport_tool import MXDReport
+from ormap.ZoomToMapNumber_tool import ZoomToMapNumber
+from ormap.PrintMaps_tool import PrintMaps
+from ormap.MXDReport_tool import MXDReport
 
 class Toolbox(object):
     def __init__(self):
