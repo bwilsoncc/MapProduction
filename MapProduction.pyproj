@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{00b18597-48c9-4e9d-b151-85f25dc6dfe2}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>Toolbox\ormap\ZoomToMapNumber_tool.py</StartupFile>
+    <StartupFile>Toolbox\ormap\zoomToMapNumber.py</StartupFile>
     <SearchPath>Toolbox\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -49,8 +49,7 @@
     <Compile Include="Toolbox\ormap\zoomToMapNumber.py" />
     <Compile Include="Toolbox\ormap\ZoomToMapNumber_tool.py" />
     <Compile Include="Toolbox\ormap\__init__.py" />
-    <Compile Include="Toolbox\ORMAP_LayersConfig.py" />
-    <Compile Include="Toolbox\ORMAP_MapConfig.py" />
+    <Compile Include="Toolbox\ORMAP_config.py" />
     <Compile Include="update_acres.py" />
   </ItemGroup>
   <ItemGroup>
