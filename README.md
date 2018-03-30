@@ -1,87 +1,44 @@
 # ORMAP - Map Production Tools
 
 This is a fork of the original tools, this version has been tailored
-to support Clatsop County but might work elsewhere.
+to support Clatsop County.
 
-This is a set of tools built for ESRI ArcGIS Desktop (10.5.1 at the
+This is a set of tools built for ESRI ArcGIS Desktop (10.5.1/10.6 at the
 moment) to support the mapping requirments set forth by the Oregon
-Department of Revenue for mapping tax parcels.  The tools are built in
-Python using the <a href="https://esri.com/" target="_blank">ESRI</a>
-ArcPy python library.
+Department of Revenue for mapping tax parcels. 
 
 The tools are included in a Python Toolbox for access direct from an
-ArcMap document. A sample document is included.
+ArcMap document.
 
-The original github repo seems unmaintained so I have not tried to do
-any pull requests; at this point this code would only break that repo.
-
-
-
-
-
+There is probably only 1% of the original fork, the approach used here
+is very different.
 
 ### Documentation/Configuration
 
-I moved away from providing an add-in as I did not see any benefit in using it.
+The original project used an "add-in". This project uses a python toolbox.
 
-== NOTE THAT THE FOLLOWING DOCUMENTATION IS TOTALLY OUT OF DATE. It is left over from the original version and I need to update it.
+The philosophy of the original version was to use an extensive set of
+configuration files. It was designed without using Data Driven Pages.
 
-This Add-In requires configuration and setup prior to use.  This documentation is meant for an administrator who will configure and distribute the Add-In to users.   
+This version relies heavily on Data Driven Pages and has only a minimal
+config file. Instead it reads settings from the MXD file and the
+DDP index feature class.
 
-Download the zip file and unzip it to a folder on your hard drive.  We can use one of the buttons on the toolbar to help us configure the map elements for the new toolbar.  First, create and install the toolbar.
+The main component of this project is a "python toolbox" that contains
+three tools
 
-1.	Start by creating the Add-In file.  To do this, navigate to where you unzipped the contents of the zip file and go into the AddIn folder.  
-2.	Double click the makeaddin.py file to create an Add-In.  You should see a file created called Ormap Map Production.esriaddin. 
-3.	Double click this file and click Install Add-In to install into ArcMap.   
-4.	Open your Map Production map document (mxd).  In ArcMap, click Customize >> Add-In Manager.  Ensure you are on the Add-Ins tab and verify that the toolbar is installed. 
+1. ZoomToMapNumber
+2. PrintMaps
+3. MXDReport
 
-You can now use the Page Layout Element Report to see what map element names we currently have and compare them to what the names should be for use in the new toolbar.
+They are all designed to be run from inside an open MXD Map Document.
 
-1.	Verify the new Ormap Map Production toolbar is turned on.  In Arcmap, click Customize >> Toolbars.  Scroll through the list and make sure the Ormap Map Production Toolbar has a check next to it.  If it does not click it to turn it on. 
-2.	Hover your mouse over each tool on the toolbar to find the Page Layout Element Report tool.  Click this tool, specify an output for the report and press Ok.  
-3.	When the report is finished it should open automatically.  This report will contain the names and locations of the map elements on your page.  These will likely need to be renamed in order for use with the new toolbar.   It is recommended that you make a backup copy of your Map Production map document (mxd) prior to making these changes.  
-
-The following is a list of map elements for the new toolbar.  Those denoted in bold are required.  The others are optional for use in the toolbar.  Your county may contain a few or all of these elements.  
-
-+	MainDF = The main dataframe.
-+	MapNumber* = Not used on the map, however it is used by the code to determine which map you are working with.
-+	MainMapTitle* = Map title.
-+	CountyName** = The County name.
-+	MainMapScale** = The map scale in the format 1” = x’
-+	Disclaimer* = The maps disclaimer.
-+	DisclaimerBox** = A box that surrounds the disclaimer.
-+   PlotDate* = The auto generated date on the map.
-+	CanMapNumber* = The cancelled numbers primary column.
-+	Can MapNumber2** = A second column for cancelled numbers overflow.
-+	CanMapNumber3** = A third column for cancelled numbers overflow.
-+	UpperRightMapNum* = The mapnumber listed in the upper right corner of the map.
-+	LowerRightMapNum* = The mapnumber listed in the lower right corner of the map.
-+	UpperLeftMapNum*** = The mapnumber listed in the upper left spot.
-+	LowerLeftMapNum*** = The mapnumber listed in the lower left spot.
-+	LocatorDF = The locator data frame.
-+	SectionsDF = The Sections data frame.
-+	QSectionsDF = The Quarter Sections data frame.
-+	smallMapTitle*** = A smaller version of the MainMapTitle.
-+	smallMapScale*** = A smaller version of the MainMapScale.
-+	NorthArrow* = The North arrow.
-+	ScaleBar* = The scalebar.
-
-\* These items have their x/y coordinates stored in the PageLayoutElements table.  
-\** These items x/y coordinates derived from other page elements. These may include offsets described in the configuration files.  
-\***  These items x/y coordinates are not stored or calculated however the text value is repeated from another page element.  
-
-The download contains diagrams displaying the map elements as they might appear on the map.  There are two examples, one for 18x20 and another for 18x24:
+A separate Word format document is included in this repository with
+more information on configuring and using this toolbox.
 
 
-### Issues
-Find a bug or want to request a new feature?  Please let us know by submitting an [issue](https://github.com/ORMAPtools/MapProduction/issues). 
-
-Having problems with the toolbar? Check out the issue tracker to see if your [problem](https://github.com/ORMAPtools/MapProduction/issues?utf8=%E2%9C%93&q=is%3Aissue) has already been resolved by someone else.
-
-### Credit/Contributions
-The ORMAP tools were created by the ORMAP tools developers.  We encourage anyone to help contribute to the ORMAP tools project.  Please submit an [issue](https://github.com/ORMAPtools/MapProduction/issues) or fork and create a pull request.
 
 
-### Licensing
-Licensed under the GNU General Public License, version 3 (GPL-3.0).  
-> [View License](https://github.com/ORMAPtools/MapProduction/blob/master/LICENSE).
+
+
+
