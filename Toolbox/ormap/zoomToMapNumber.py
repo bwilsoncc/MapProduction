@@ -6,7 +6,7 @@ Created on Tue Dec 19 15:43:00 2017
 from __future__ import print_function
 import arcpy
 from arcpy import mapping as MAP
-import os, sys
+import os, sys, re
 from datetime import datetime
 from arc_utilities import aprint, eprint, SetDefinitionQuery, GetDataframe, GetLayer
 
@@ -18,102 +18,28 @@ if not configpath: configpath = os.getcwd()
 configpath=os.path.normcase(configpath).replace("ormap","")
 print("__file__=%s configpath=%s" % (__file__, configpath))
 sys.path.append(configpath)
-import ORMAP_LayersConfig as ORMapLayers
-import ORMAP_MapConfig as ORMapPageLayout
-aprint(ORMapLayers.__file__)
-aprint(ORMapPageLayout.__file__)
+import ORMAP_config as ORMAP
+aprint(ORMAP.__file__)
                            
 from ormapnum import ormapnum
 from cancellations import cancellations
 
-mapindex_fields = [ "MapScale", "MapNumber", "OrMapNum", "SHAPE@", ]
-MAPSCALE  = 0
-MAPNUMBER = 1
-ORMAPNUM  = 2
-SHAPE     = 3
-ROTATION  = 4   # need to reprocess data to get this...
+# preload spreadsheet
+can = cancellations(xlsfile = ORMAP.CancelledNumbersTable)
 
-cancelledfields  = [ "Taxlot", ]
-TAXLOT = 0
-
-pagelayoutfields = [ "MapAngle", ]
-ANGLE = 0
-
-can = cancellations(xlsfile = ORMapLayers.CancelledNumbersTable)
+# locations of locator maps and cancelled taxlots group when on the page.
+locator_positions = {} # tuples index by df name
+can_x = can_y = 0
 
 # ==============================================================================
 
-def qqwhere(q, qq):
-    """ Return a query string based on the quarter and quarterquarter letters 0ABCD """
-    rval = "" # Nothing is highlighted
-    if q != '0':
-        if qq == '0':
-            # Entire quarter is highlighted
-            rval = q
-        else:
-            # One quarter quarter is highlighted
-            rval = q + qq
-    return rval
-
-def set_main_definition_queries(mxd, df, orm, mapnumber, mapscale, query):
-    """ Set definition queries for each layer in the MapView dataframe. 
-        SET TO CONFIG TABLE VALUES. """
-
-# NOTE "mapnumber" and "mapscale" can be used in config file
-# so don't go removing them...
-        
-# So far, mapscale is not used in any queries... 
-        
-    arcpy.SetProgressorLabel("Set definition queries.")
-    print("Using map config file; no optional DefCustomTable \"%s\"." % ORMapLayers.CUSTOMDEFINITIONQUERIES_TABLE)
-
-    # Convert the layers into a dictionary
-        
-    d_layer = {}
-    for (layername,pyexdq) in ORMapLayers.MainLayers:
-
-        # evaluate expression to convert it from python to SQL
-        dq=None
-        if pyexdq:
-            try:
-                dq = eval(pyexdq)
-            except Exception as e:
-                print("An eval problem in python expression \"%s\"." % pyexdq, e)
-                pass
-            
-        if dq:
-            #print("dict: \"%s\" : \"%s\"" % (layername, dq))
-            d_layer[layername] = dq
-
-    # Now make one pass through the dataframe and actually fix up the definition queries.
-        
-    for lyr in MAP.ListLayers(mxd, "", df):
-        if lyr.supports("DATASETNAME"):
-            try:
-                dq = d_layer[lyr.name]
-                lyr.definitionQuery = dq
-                print("New query on layer %s set to \"%s\"." % (lyr.longName, lyr.definitionQuery))
-            except KeyError:
-                if lyr.definitionQuery:
-                    dq = '"' + lyr.definitionQuery + '"'
-                    print("Query on layer \"%s\" is %s." % (lyr.longName, dq))
-                    
-        # I tested using "visible" attribute to turn on/off layers and it worked fine.
-#        try:
-#            s = d_anno[lyr.name]
-#            lyr.visible = (mapscale == s)
-#            aprint("%s %s %s" % (lyr.name, mapscale, s))
-#        except KeyError:
-#            pass
-
-    return
-
-def list_scalebars(mxd):
-    sb = []
+def make_scalebar_dict(mxd):
+    sb = {}
     # make a list of all the scalebar elements in the map.
     for elem in MAP.ListLayoutElements(mxd, "MAPSURROUND_ELEMENT"):
-        if elem.name.lower().find("scalebar")>=0:
-            sb.append(elem)
+        name = elem.name.lower()
+        if name.find("scalebar") >= 0:
+            sb[name] = elem
     return sb
 
 def on_page(elem, mxd):
@@ -132,60 +58,68 @@ def on_page(elem, mxd):
 
 def select_scalebar(mxd, mapscale):
     
-    sb = list_scalebars(mxd) # all the scalebars in the map
-    try:
-        sbname = ORMapPageLayout.Scalebars[mapscale] # the one we want
-    except KeyError:
-        # better to fail quietly than to up and quit
-        sbname = ORMapPageLayout.DefaultScalebar # a substitute
-        aprint("No scalebar found for %d so I am using %s instead." % (mapscale, sbname))
-    visible_sb = selected_sb = None
-    for elem in sb:
+    sb = make_scalebar_dict(mxd) # all the scalebars in the map
+    sbname = "scalebar%d" % mapscale # the one we want
+    if not sb.has_key(sbname):
+        sbname = "scalebardefault"
+        if not sb.has_key(sbname):
+            eprint("There is no default scalebar.")
+            return
+        aprint("No scalebar found for %d so I am using %s." % (mapscale, sbname))
+
+    visible_sb = new_sb = None
+    for name in sb:
+        elem = sb[name]
+        lcname = elem.name.lower()
+
         # Is this scalebar visible?
         if on_page(elem, mxd):
-            print("%s is visible." % elem.name)
-            visible_sb = elem
-            
-            if sbname == elem.name:
-            # "elem" is the scalebar we want
-                #aprint("Current scalebar works for me.")
-                # it's on the map, stop
+            visible_sb = elem           
+            if sbname == lcname:
+                aprint("%s is already visible." % sbname)
+                # it's already on the map, stop
                 return
         else:
-            if sbname == elem.name:
-                selected_sb = elem
-            
-    if visible_sb:
-        # Move this one off the map
-        visible_sb.elementPositionX = selected_sb.elementPositionX
-        visible_sb.elementPositionY = selected_sb.elementPositionY
-        #aprint("I will hide %s over here (%d,%d)" % (visible_sb.name, visible_sb.elementPositionX, visible_sb.elementPositionY))
-        pass
-    if selected_sb:
-        selected_sb.elementPositionX = ORMapPageLayout.ScalebarXY[0]
-        selected_sb.elementPositionY = ORMapPageLayout.ScalebarXY[1]
-        #aprint("and put %s on the page (%d,%d)" % (selected_sb.name, selected_sb.elementPositionX, selected_sb.elementPositionY))
+            if sbname == lcname:
+                new_sb = elem
+   
+    if not visible_sb:
+        eprint("There is no scalebar visible on the page. Position one on the map so I know where it belongs.")
+        return
+
+    map_x = visible_sb.elementPositionX
+    map_y = visible_sb.elementPositionY        
+
+    # Move this one off the map
+    visible_sb.elementPositionX = new_sb.elementPositionX
+    visible_sb.elementPositionY = new_sb.elementPositionY
+    #aprint("I will hide %s over here (%d,%d)" % (visible_sb.name, visible_sb.elementPositionX, visible_sb.elementPositionY))
+
+    if new_sb:
+        new_sb.elementPositionX = map_x
+        new_sb.elementPositionY = map_y
+        aprint("Put %s on the page (%d,%d)" % (new_sb.name, new_sb.elementPositionX, new_sb.elementPositionY))
     else:
         eprint("I did not find a good scalebar for this layout.")
-        return
                 
     return
 
 def update_locator_maps(mxd, orm):
     """ Update the locator maps to emphasize the area of interest.
-
     mxd = map document
     orm = ormap object, used in query definitions
 
     You can either create a mask or a highlighter based on queries in the configuration.
     Set up query definitions in each dataframe to control this. """
 
+    global sections_x, sections_y, qsections_x, qsections_y
+
     arcpy.SetProgressorLabel("Update locator maps")
 
     for dfname,layers,extlayername,scale,fcount in [
-            (ORMapLayers.LocatorDF,  ORMapLayers.LocatorLayers,  ORMapLayers.LocatorExtentLayer,  ORMapLayers.LocatorScale,  ORMapLayers.LocatorFeatureCount),
-            (ORMapLayers.SectionDF,  ORMapLayers.SectionLayers,  ORMapLayers.SectionExtentLayer,  ORMapLayers.SectionScale,  ORMapLayers.SectionFeatureCount),
-            (ORMapLayers.QSectionDF, ORMapLayers.QSectionLayers, ORMapLayers.QSectionExtentLayer, ORMapLayers.QSectionScale, ORMapLayers.QSectionFeatureCount),
+            (ORMAP.LocatorDF,  ORMAP.LocatorLayers,  ORMAP.LocatorExtentLayer,  ORMAP.LocatorScale,  ORMAP.LocatorFeatureCount),
+            (ORMAP.SectionDF,  ORMAP.SectionLayers,  ORMAP.SectionExtentLayer,  ORMAP.SectionScale,  ORMAP.SectionFeatureCount),
+            (ORMAP.QSectionDF, ORMAP.QSectionLayers, ORMAP.QSectionExtentLayer, ORMAP.QSectionScale, ORMAP.QSectionFeatureCount),
             ]:
         df = GetDataframe(mxd, dfname)
 
@@ -208,52 +142,87 @@ def update_locator_maps(mxd, orm):
             # Pan and zoom are optional in locator maps.
             ext_layer = GetLayer(mxd, df, extlayername)
             df.extent = ext_layer.getExtent()
-
             # if a fixed scale is specified in config, use it
             if scale: df.scale  = scale
 
-            #arcpy.RefreshActiveView()
-
             # Now's our chance to hide (or show) locator maps!!
-            # We do this by making layers visible or not if there are any features in the featuecount layer
-            # after setting the query
             visibility = True
             try:
                 fc_layer = GetLayer(mxd,df,fcount)
                 c = int(arcpy.GetCount_management(fc_layer).getOutput(0))
-                #aprint("count = %d" % c)
                 if c == 0:
                     visibility = False
                     aprint("Nothing to see in layer \"%s\"." % extlayername)
             except Exception as e:
                 aprint("Error in %s, %s" % (extlayername, e))
 
-            for l in MAP.ListLayers(mxd,"*",df):
-                l.visible = visibility
-                #aprint("%s %s" % (l.name, l.visible))
+            elm = None
+            try:
+                elm = MAP.ListLayoutElements(mxd, "DATAFRAME_ELEMENT", dfname)[0]
+            except IndexError:
+                pass
+
+            if elm:
+                if on_page(elm, mxd):
+                    locator_positions[elm.name] = (elm.elementPositionX, elm.elementPositionY)
+
+                x = y = 0
+                try:
+                    x = locator_positions[elm.name][0]
+                    y = locator_positions[elm.name][1]
+                except:
+                    eprint("Can't figure out where to put \"%s\"" % elm.name)
+
+                if visibility:
+                    if x <> 0 and y <> 0:
+                        elm.elementPositionX = x
+                        elm.elementPositionY = y
+                else:
+                    elm.elementPositionX = mxd.pageSize.width + 2
+                    elm.elementPositionY = y
 
     return
 
+
 def update_page_elements(mxd, df, orm):
+    global can_x, can_y
 
     arcpy.SetProgressorLabel("Set up page layout elements")
     
-    #aprint("Attendez! Scale is now %s" % df.scale)
     select_scalebar(mxd, df.scale)
   
-    for elm in MAP.ListLayoutElements(mxd):
-        if elm.name == "PlotDate":
-            now = datetime.now()
-            elm.text = "PLOT DATE: %2d/%02d/%4d" % (now.month, now.day, now.year)
-        
-        elif elm.name == ORMapPageLayout.CancelledTaxlotsElement:
-            cancelledtaxlot_count = populate_cancelled_taxlot_table(mxd, orm.dotted)
-            offset = 0
-            if cancelledtaxlot_count == 0:
-                # Move the cancelled taxlot table off the layout
-                offset = 4
-            elm.elementPositionX = ORMapPageLayout.CancelledTaxlotsXY[0] + offset
-            elm.elementPositionY = ORMapPageLayout.CancelledTaxlotsXY[1]
+    try:
+        elm = MAP.ListLayoutElements(mxd, "TEXT_ELEMENT", "PlotDate")[0]
+        now = datetime.now()
+        elm.text = "PLOT DATE: %2d/%02d/%4d" % (now.month, now.day, now.year)
+    except IndexError:
+        eprint("Could not find a PlotDate text element. Skipping.")
+    
+    can_elm = None
+    try:
+        can_elm = MAP.ListLayoutElements(mxd, "GRAPHIC_ELEMENT", "can*")[0]
+    except IndexError:
+        eprint("Could not find a cancelled taxlots group element. Skipping.")
+        pass
+
+    if can_elm:
+        if on_page(can_elm,mxd):
+            can_x = can_elm.elementPositionX
+            can_y = can_elm.elementPositionY
+        elif can_x == 0 and can_y == 0:
+            eprint("The cancelled taxlots element \"%s\" is not on the map so it will never print." % elm.name)
+
+        cancelled_taxlots = can.get_list(orm.dotted)
+        aprint("Cancelled taxlots: %d" % len(cancelled_taxlots))
+        if len(cancelled_taxlots) == 0:
+            # Move the cancelled taxlot table off the layout
+            can_elm.elementPositionX = mxd.pageSize.width + 3
+            can_elm.elementPositionY = can_y
+        elif can_x or can_y:
+            can_elm.elementPositionX = can_x
+            can_elm.elementPositionY = can_y
+
+    populate_cancelled_taxlot_table(mxd, cancelled_taxlots)
             
     return
 
@@ -274,47 +243,37 @@ def make_table(seq, columns):
 
     return maxy,columns
 
-def populate_cancelled_taxlot_table(mxd, dotted):
+def populate_cancelled_taxlot_table(mxd, taxlots):
     """ Fill in the cancelled taxlot table in the page. 
         Return the number of cancelled taxlots. """
 
-    aprint("populate_cancelled_taxlot_table(mxd,\"%s\")" % dotted)        
     arcpy.SetProgressorLabel("Populating cancelled taxlot table")
         
-    # Note that this function is not affected by any query definition.
-    cancelled_taxlots = can.get_list(dotted)
-    ncols = len(ORMapPageLayout.CancelledNumbersColumns)
-    cancelled_elem = []
+    # Count the can* columns in this MXD and empty them out.
 
-    # Empty out the text boxes
-
-    for x in xrange(0, ncols):
-        try:
-            cancelled_elem.append(None)
-            cancelled_elem[x] = MAP.ListLayoutElements(mxd, "TEXT_ELEMENT", ORMapPageLayout.CancelledNumbersColumns[x])[0]
-            cancelled_elem[x].text = " " # This element has some text in it (event just a single space) so ArcMap does not "lose" it.
-        except Exception as e:
-            aprint("Exception \"e\" when initializing cancelled column %d" % (e,x))
-            pass
-
-    if len(cancelled_taxlots): 
-        aprint("Loading %d cancelled taxlots." % len(cancelled_taxlots))
-        
-        # Sort out the data into as ;ost pf columns
-        max_y, columns = make_table(cancelled_taxlots, ncols)
+    ncols = 0
+    cols = []
+    for elm in MAP.ListLayoutElements(mxd, "TEXT_ELEMENT", "can*"):
+        if re.search('^can\d+$', elm.name):
+            cols.append(elm)
+            ncols += 1
+            elm.text = " " # This element has some text in it (event just a single space) so ArcMap does not "lose" it.
+    
+    if len(taxlots):
+        # Sort out the data into as a list of columns
+        max_y, columns = make_table(taxlots, ncols)
 
         # Adjust the font size of the table according to the number of rows
         fontsize = 10
-        maxrows = ORMapPageLayout.MaxCancelledRows
-        if max_y > maxrows: fontsize = 8
+        if max_y > ORMAP.MaxCancelledRows: fontsize = 8
 
         x = 0
         for column in columns:
-            cancelled_elem[x].text = column
-            cancelled_elem[x].fontSize = fontsize
+            cols[x].text = column
+            cols[x].fontSize = fontsize
             x += 1
         
-    return len(cancelled_taxlots)
+    return
 
 # ==============================================================================
 
@@ -359,7 +318,12 @@ if __name__ == '__main__':
         mxdname = "C:\\GeoModel\\Clatsop\\Workfolder\\TestMap.mxd"
     
     mxd = MAP.MapDocument(mxdname)
-    #select_scalebar(mxd, 24000)
+    select_scalebar(mxd, 120)
+    select_scalebar(mxd, 240)
+    select_scalebar(mxd, 1200)
+    select_scalebar(mxd, 2400)
+    select_scalebar(mxd, 4800)
+    select_scalebar(mxd, 24000)
     test_layouts(mxd)
     del mxd
 
