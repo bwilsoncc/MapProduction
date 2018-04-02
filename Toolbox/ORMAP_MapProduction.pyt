@@ -25,7 +25,7 @@ class Toolbox(object):
         self.tools = [
                      ZoomToMapNumber,
                      PrintMaps,
-                     MXDReport
+                     #MXDReport
                      ]
 
 if __name__ == "__main__":

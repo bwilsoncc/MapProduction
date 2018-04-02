@@ -9,8 +9,8 @@ from __future__ import print_function
 import arcpy
 import os, logging
 import re
-from Toolbox.arc_utilities import ListFieldNames, DeleteFC, AddField
-from ormapnum import ormapnum
+from ormap.arc_utilities import ListFieldNames, DeleteFC, AddField
+from ormap.ormapnum import ormapnum
 
 # ========================================================================
 

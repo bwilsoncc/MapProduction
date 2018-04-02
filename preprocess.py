@@ -15,7 +15,7 @@ from glob import glob
 from shutil import copyfile, copytree, rmtree
 import arcpy
 from arcpy import mapping as MAP
-from Toolbox.ormapnum import ormapnum
+from ormap.ormapnum import ormapnum
 
 MYNAME  = os.path.splitext(os.path.split(__file__)[1])[0]
 LOGFILE = MYNAME + ".log"

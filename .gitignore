@@ -3,7 +3,6 @@
 *.xml
 *.pdf
 *.pyd
-*.xml
 .spyproject
 *.log
 .vs/

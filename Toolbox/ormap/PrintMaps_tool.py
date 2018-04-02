@@ -39,18 +39,28 @@ class PrintMaps(object):
         and set it in the "parameters" list. """ 
 
         path = fileext = newfilename = ""
-        if currentpathname: path,fileext = os.path.split(currentpathname)
+        if currentpathname: 
+            if os.path.isdir(currentpathname):
+                # This is just a directory, leave the filename empty
+                path = currentpathname
+            else:
+                # We've got a filename, pull it off the path.
+                path,fileext = os.path.split(currentpathname)
 
         file = ext = ""
         if fileext:
             file,ext = os.path.splitext(fileext)
-            if format == "PDF":
-                fileext = file + ".pdf"
-            elif format == "JPEG":
-                fileext = file + ".jpg"
-            else:
-                fileext = file
-            newfilename = os.path.join(path, fileext)
+        else:
+            file = "t-"
+
+        if format == "PDF":
+            fileext = file + ".pdf"
+        elif format == "JPEG":
+            fileext = file + ".jpg"
+        else:
+            fileext = file
+
+        newfilename = os.path.normpath(os.path.join(path, fileext))
         return newfilename
     
     def getParameterInfo(self):

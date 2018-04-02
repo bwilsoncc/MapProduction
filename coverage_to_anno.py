@@ -8,7 +8,7 @@ import arcpy
 from arcpy import mapping as MAP
 import os, logging
 import re
-from Toolbox.arc_utilities import ListFieldNames, DeleteFC
+from ormap.arc_utilities import ListFieldNames, DeleteFC
 from collections import defaultdict
 
 # ========================================================================

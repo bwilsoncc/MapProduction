@@ -196,13 +196,13 @@ def update_page_elements(mxd, df, orm):
         now = datetime.now()
         elm.text = "PLOT DATE: %2d/%02d/%4d" % (now.month, now.day, now.year)
     except IndexError:
-        eprint("Could not find a PlotDate text element. Skipping.")
+        aprint("Could not find a PlotDate text element. Skipping.")
     
     can_elm = None
     try:
         can_elm = MAP.ListLayoutElements(mxd, "GRAPHIC_ELEMENT", "can*")[0]
     except IndexError:
-        eprint("Could not find a cancelled taxlots group element. Skipping.")
+        aprint("Could not find a cancelled taxlots group element. Skipping.")
         pass
 
     if can_elm:
@@ -210,7 +210,7 @@ def update_page_elements(mxd, df, orm):
             can_x = can_elm.elementPositionX
             can_y = can_elm.elementPositionY
         elif can_x == 0 and can_y == 0:
-            eprint("The cancelled taxlots element \"%s\" is not on the map so it will never print." % elm.name)
+            aprint("The cancelled taxlots element \"%s\" is not on the map so it will never print." % can_elm.name)
 
         cancelled_taxlots = can.get_list(orm.dotted)
         aprint("Cancelled taxlots: %d" % len(cancelled_taxlots))
