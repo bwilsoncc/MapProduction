@@ -1,6 +1,5 @@
 *.pyc
 *~
-*.xml
 *.pdf
 *.pyd
 .spyproject
