@@ -63,7 +63,7 @@ def select_scalebar(mxd, mapscale):
     if not sb.has_key(sbname):
         sbname = "scalebardefault"
         if not sb.has_key(sbname):
-            eprint("There is no default scalebar.")
+            aprint("There is no default scalebar.")
             return
         aprint("No scalebar found for %d so I am using %s." % (mapscale, sbname))
 
@@ -76,7 +76,7 @@ def select_scalebar(mxd, mapscale):
         if on_page(elem, mxd):
             visible_sb = elem           
             if sbname == lcname:
-                aprint("%s is already visible." % sbname)
+                #aprint("%s is already visible." % sbname)
                 # it's already on the map, stop
                 return
         else:
@@ -84,7 +84,7 @@ def select_scalebar(mxd, mapscale):
                 new_sb = elem
    
     if not visible_sb:
-        eprint("There is no scalebar visible on the page. Position one on the map so I know where it belongs.")
+        aprint("There is no scalebar visible on the page. Position one on the map so I know where it belongs.")
         return
 
     map_x = visible_sb.elementPositionX
@@ -100,7 +100,7 @@ def select_scalebar(mxd, mapscale):
         new_sb.elementPositionY = map_y
         aprint("Put %s on the page (%d,%d)" % (new_sb.name, new_sb.elementPositionX, new_sb.elementPositionY))
     else:
-        eprint("I did not find a good scalebar for this layout.")
+        aprint("I did not find a good scalebar for this layout.")
                 
     return
 
@@ -114,7 +114,7 @@ def update_locator_maps(mxd, orm):
 
     global sections_x, sections_y, qsections_x, qsections_y
 
-    arcpy.SetProgressorLabel("Update locator maps")
+    #aprint("Updating locator maps")
 
     for dfname,layers,extlayername,scale,fcount in [
             (ORMAP.LocatorDF,  ORMAP.LocatorLayers,  ORMAP.LocatorExtentLayer,  ORMAP.LocatorScale,  ORMAP.LocatorFeatureCount),
@@ -171,7 +171,7 @@ def update_locator_maps(mxd, orm):
                     x = locator_positions[elm.name][0]
                     y = locator_positions[elm.name][1]
                 except:
-                    eprint("Can't figure out where to put \"%s\"" % elm.name)
+                    aprint("Can't figure out where to put \"%s\"" % elm.name)
 
                 if visibility:
                     if x <> 0 and y <> 0:
@@ -187,7 +187,7 @@ def update_locator_maps(mxd, orm):
 def update_page_elements(mxd, df, orm):
     global can_x, can_y
 
-    arcpy.SetProgressorLabel("Set up page layout elements")
+    #aprint("Setting up page layout")
     
     select_scalebar(mxd, df.scale)
   
@@ -247,7 +247,7 @@ def populate_cancelled_taxlot_table(mxd, taxlots):
     """ Fill in the cancelled taxlot table in the page. 
         Return the number of cancelled taxlots. """
 
-    arcpy.SetProgressorLabel("Populating cancelled taxlot table")
+    #aprint("Populating cancelled taxlot table")
         
     # Count the can* columns in this MXD and empty them out.
 
