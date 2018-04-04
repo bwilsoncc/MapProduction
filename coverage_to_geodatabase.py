@@ -113,38 +113,40 @@ def make_polygons(infc, labelfc, outfc):
 
     return
 
-def update_mapindex(fc):
+def update_mapindex(infc, outfc):
     """ Update the mapindex fc by adding and populating shortmaptitle and longmaptitle fields.
     longmaptitle  a string that can be used on maps as the "small map title"
     """
-    if arcpy.Exists(fc):
-        AddField(fc, "ShortMapTitle", "TEXT", fieldlen=20)
-        AddField(fc, "LongMapTitle", "TEXT", fieldlen=50)
 
-        orm = ormapnum()
+    if arcpy.Exists(outfc): arcpy.Delete_management(outfc)
+    arcpy.Dissolve_management(infc, outfc, "PageName")
+    AddField(outfc, "ShortMapTitle", "TEXT", fieldlen=20)
+    AddField(outfc, "LongMapTitle", "TEXT", fieldlen=50)
 
-        fields = ["ORMapNum", "ShortMapTitle", "LongMapTitle", "OID@"]
-        ORMAPNUM = 0
-        SHORTTTL = 1
-        LONGTTL  = 2
-        OID      = 3
+    orm = ormapnum()
 
-        with arcpy.da.UpdateCursor(fc, fields) as cursor:
-            for row in cursor:
-                oid = row[OID]
-                o   = row[ORMAPNUM]
-                if not o:
-                    logging.debug("Deleting empty feature %d in %s" % (oid, fc))
-                    cursor.deleteRow()
-                else:
-                    try:
-                        orm.unpack(o)
-                        row[SHORTTTL] = orm.shortmaptitle
-                        row[LONGTTL]  = orm.longmaptitle
-                    except ValueError as e:
-                        logging.warn(e)
+    fields = ["ORMapNum", "ShortMapTitle", "LongMapTitle", "OID@"]
+    ORMAPNUM = 0
+    SHORTTTL = 1
+    LONGTTL  = 2
+    OID      = 3
 
-                    cursor.updateRow(row)
+    with arcpy.da.UpdateCursor(outfc, fields) as cursor:
+        for row in cursor:
+            oid = row[OID]
+            o   = row[ORMAPNUM]
+            if not o:
+                logging.debug("Deleting empty feature %d in %s" % (oid, fc))
+                cursor.deleteRow()
+            else:
+                try:
+                    orm.unpack(o)
+                    row[SHORTTTL] = orm.shortmaptitle
+                    row[LONGTTL]  = orm.longmaptitle
+                except ValueError as e:
+                    logging.warn(e)
+
+                cursor.updateRow(row)
     return
 
 __stdscales = {
@@ -279,19 +281,19 @@ if __name__ == "__main__":
     sourcedir = os.path.join(workfolder, target)
     geodatabase = os.path.join(workfolder, "ORMAP_Clatsop.gdb")
 
-    print("Importing features...")
-    import_all_features(sourcedir, geodatabase)
+    #print("Importing features...")
+    #import_all_features(sourcedir, geodatabase)
 
     saved = arcpy.env.workspace
     arcpy.env.workspace = os.path.join(geodatabase, "taxlots_fd")
 
-    make_polygons("mapindex_lines", "mapindex_points", "mapindex")
+    make_polygons("mapindex_lines", "mapindex_points", "mapindex_undissolved")
+    update_mapindex("mapindex_undissolved", "mapindex")
+    fix_mapscales(["mapindex"])
+
     make_polygons("taxcode_lines",  "taxcode_points",  "taxcode")
     make_polygons("taxlot_lines",   "taxlot_points",   "taxlot")
 
-    update_mapindex("mapindex")
-
-    fix_mapscales(["mapindex"])
     fix_acres("taxlot")
     fix_linetypes(["taxlot"])
 

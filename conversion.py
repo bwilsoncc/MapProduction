@@ -124,13 +124,14 @@ if __name__ == "__main__":
     saved = arcpy.env.workspace
     arcpy.env.workspace = os.path.join(gdb, "taxlots_fd")
 
-    make_polygons("mapindex_lines", "mapindex_points", "mapindex")
+    make_polygons("mapindex_lines", "mapindex_points", "mapindex_undissolved")
+    update_mapindex("mapindex_undissolved", "mapindex")
+    fix_mapscales(["mapindex"])
+
     make_polygons("taxcode_lines",  "taxcode_points",  "taxcode")
     make_polygons("taxlot_lines",   "taxlot_points",   "taxlot")
 
-    update_mapindex("mapindex")
 
-    fix_mapscales(["mapindex"])
     fix_mapacres("taxlot")
     fix_linetypes(["taxlot"])
 
