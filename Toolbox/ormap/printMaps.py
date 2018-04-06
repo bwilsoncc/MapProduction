@@ -71,7 +71,7 @@ def print_maps(mxd, pagenames, output_type, output_pathname):
     # ESRI likes to wrap parameters strings in quotes, for some unknown reason.
     for mn in l_pagenames:
         pagename = mn.strip("\"'")
-        filename = output_file + pagename.replace(' ', '-')
+        filename = output_file + pagename.replace(' ', '_')
         pathname = os.path.join(output_path, filename + output_ext)
         #print("Output file:", pathname)
         print_map(mxd, pagename, output_type, pathname)

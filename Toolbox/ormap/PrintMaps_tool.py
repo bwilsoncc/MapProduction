@@ -51,7 +51,7 @@ class PrintMaps(object):
         if fileext:
             file,ext = os.path.splitext(fileext)
         else:
-            file = "t-"
+            file = "tp"
 
         if format == "PDF":
             fileext = file + ".pdf"

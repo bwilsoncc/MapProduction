@@ -14,8 +14,7 @@ from collections import defaultdict
 import arcpy
 from arcpy import mapping as MAP
 
-from update_acres import update_acres
-from coverage_to_geodatabase import import_all_features, fix_mapscales, fix_mapacres, fix_linetypes, make_polygons, update_mapindex
+from coverage_to_geodatabase import import_features, finish_features
 from coverage_to_anno import import_anno
 from preprocess import preprocess, merge_annotation
 
@@ -108,9 +107,9 @@ if __name__ == "__main__":
         if not ok: 
             logging.warn("Preprocessing completed with errors.")
 
-        import_all_features(workfolder, gdb)
+        import_features(workfolder, gdb)
 
-    logging.info("Convert annotation for %s" % township)
+    logging.info("Merge annotation")
     merge_annotation(townships, homefolder) # Make one big coverage for each annotation group
     
     # Before you get here, use Arcmap to adjust settings in the MXD to control font color and size...
@@ -121,21 +120,7 @@ if __name__ == "__main__":
         import_anno(mxdname, gdb)
         pass
 
-    saved = arcpy.env.workspace
-    arcpy.env.workspace = os.path.join(gdb, "taxlots_fd")
-
-    make_polygons("mapindex_lines", "mapindex_points", "mapindex_undissolved")
-    update_mapindex("mapindex_undissolved", "mapindex")
-    fix_mapscales(["mapindex"])
-
-    make_polygons("taxcode_lines",  "taxcode_points",  "taxcode")
-    make_polygons("taxlot_lines",   "taxlot_points",   "taxlot")
-
-
-    fix_mapacres("taxlot")
-    fix_linetypes(["taxlot"])
-
-    arcpy.env.workspace = saved
+    finish_features(os.path.join(gdb, "taxlots_fd"))
 
     if ok: 
         print("All done!")

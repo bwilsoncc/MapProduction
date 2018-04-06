@@ -6,7 +6,8 @@ from __future__ import print_function
 import os, sys
 import logging
 import arcpy
-from Toolbox.ormapnum import ormapnum
+sys.path.append("C:\\GeoModel\\MapProduction\\Toolbox")
+from ormap.ormapnum import ormapnum
 
 def posttaxmap(fc):
     """ Code to run after stage 01.

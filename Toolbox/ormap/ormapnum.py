@@ -121,15 +121,17 @@ class ormapnum(object):
         townrng = "T" + str(self.township) + self.township_frac + self.township_dir + ' ' + \
                   "R" + str(self.range)    + self.range_frac    + self.range_dir    + " WM"
 
+        l1 = ""
         lmt = townrng
         if str(self.section):
             qqtext = self.qqtext()
             if qqtext:
-                l1 = qqtext + " SEC." + str(self.section)
+                l1 = qqtext + " SEC." + str(self.section) + " "
             else:
-                l1 = "SECTION " + str(self.section)   
+                if self.section > 0:
+                    l1 = "SECTION " + str(self.section) + " "  
 
-            lmt = l1 + ' ' + townrng
+            lmt = l1 + townrng
             try:
                 # If there is a "map suffix" then split the title on 2 lines.
                 s_sfx = {'D':'DETAIL', 'S':'SUPPLEMENTAL', 'T':'DETAIL'}[self.mapsuffixtype]
@@ -271,6 +273,8 @@ if __name__ == "__main__":
     # Test unpacking            
     # Test expanding a shortie
     samples = [
+                u'0407.00N09.00W0000--0000',
+
                 u'048.00N10.00W0000--0000',   # Dropped zero in TOWN, handle this please
                 u'048.00N09.00W0000--0000',   # Dropped zero in TOWN, handle this please
                 u'048.00N009.00W0000--0000',   # Dropped zero in TOWN, handle this please

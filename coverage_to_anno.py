@@ -120,7 +120,7 @@ def convert_anno(annolayer, outputfc):
         logging.error("convert_anno, exception while counting features: %s" % e)
 
     if annocount <= 0:
-        logging.info("convert_anno: EMPTY %s" % annocoverage)
+        logging.info("convert_anno: EMPTY %s" % annolayer.name)
     else:    
         # In the recent past I apparently decided I do not need this step?
         #template = os.path.join(destination, "AnnotationFD\\AnnoTEMPLATE")
@@ -147,24 +147,35 @@ def convert_anno(annolayer, outputfc):
 
 def import_anno(mxdname, geodatabase):
     """ Import annotation coverages into annotation feature classes. """
+
+    workspace = os.path.join(geodatabase, "annotation_fd")
+
+#    infc = os.path.join(workspace, all_taxlot_anno)
+#    whereclause = "TextString='99-99' OR TextString='ROAD' OR TextString='WATER' OR TextString='RAIL' OR TextString LIKE 'GAP%'"
+#    dropfeatures(infc, whereclause)
+#    return
+
     layers = [
-        ("tmpbearingan", "annotation_fd\\bearing_anno"),
-        ("tmpseemapan",  "annotation_fd\\seemap_anno"),
-        ("tmptaxlotan",  "annotation_fd\\taxlot_anno"),
-        ("tmptaxcodan",  "annotation_fd\\taxcode_anno"),
-        ("tmptaxmapan",  "annotation_fd\\taxmap_anno"),
+        ("tmpbearingan", "bearing_anno"),
+        ("tmpseemapan",  "seemap_anno"),
+        ("tmptaxlotan",  "taxlot_anno"),
+        ("tmptaxcodan",  "taxcode_anno"),
+        ("tmptaxmapan",  "taxmap_anno"),
         ]
     logging.info("import_anno(%s, %s)" % (mxdname, geodatabase))
     mxd = MAP.MapDocument(mxdname)
     df  = MAP.ListDataFrames(mxd)[0]
+
     for (layername, fc) in layers:
         annolayer = MAP.ListLayers(mxd, layername, df)[0]
-        outputfc = os.path.join(geodatabase, fc)
+        outputfc = os.path.join(workspace, fc)
         convert_anno(annolayer, outputfc)
         fix_anno(outputfc)
-
+        pass
     del mxd # Release schema locks, hopefully.
-        
+
+    return
+
 # ========================================================================
 
 if __name__ == "__main__":

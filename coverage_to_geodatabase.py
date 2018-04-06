@@ -14,7 +14,7 @@ from ormap.ormapnum import ormapnum
 
 # ========================================================================
 
-def import_features(coverage, fc):
+def import_feature_class(coverage, fc):
     """ Import a coverage into a geodatabase feature class.
     The output feature class has to exist. """
 
@@ -34,7 +34,7 @@ def import_features(coverage, fc):
 
     return rval
 
-def import_all_features(source_folder, geodatabase):
+def import_features(source_folder, geodatabase):
 
     # First item is coverage name, second is featureclass name
     # DON'T forget, attributes won't be in the output featureclass unless they are in the template database.
@@ -55,7 +55,7 @@ def import_all_features(source_folder, geodatabase):
         ("tmptaxbound\\label",   "taxlots_fd\\mapindex_points", None),       # attribute source
 
         ("tmpwaterl\\arc",     "water_lines",                "MapScale"),
-#       ("tmpwater\\polygon",    "Water",                      None),       # needed??
+#       ("tmpwater\\polygon",  "Water",                      None),       # needed??
 
         ("tmpcartol\\arc",     "cartographic_lines",        "MapScale"),
         ("tmprefl\\arc",      "reference_lines",           "MapScale"),
@@ -73,16 +73,17 @@ def import_all_features(source_folder, geodatabase):
         srccvg = os.path.join(source_folder, coverage)        
         destfc = os.path.join(geodatabase, fc)
 
-        import_features(srccvg, destfc)
+        import_feature_class(srccvg, destfc)
             
     return True
 
-def make_polygons(infc, labelfc, outfc):
-    """ Create polygons from a feature class.
+def label_polygons(infc, labelfc, outfc):
+    """ Label polygons.
     infc      input feature class (can be lines or polygons)
     labelfc   point feature class containing attributes for outfc
     outfc     where to write polygons """
 
+    logging.info("label_polygons(%s, %s, %s)" % (infc, labelfc, outfc))
     # Notes on "FeatureToPolygon"
     # If you use the "NO ATTRIBUTES" default, then only the shapes are move from the input to the generated polygon feature class.
     # If you use "ATTRIBUTES" the attributes are copied.
@@ -97,7 +98,7 @@ def make_polygons(infc, labelfc, outfc):
     # I wish that ESRI was a bit more consistent in what DOES and DOES NOT support the workspace environment variable.
     ws = str(arcpy.env.workspace)
     
-    logging.info("make_polygons(%s, %s, %s)" % (infc, labelfc, outfc))
+    logging.info("label_polygons(%s, %s, %s)" % (infc, labelfc, outfc))
     i = os.path.join(ws, infc)
     l = os.path.join(ws, labelfc)
     o = os.path.join(ws, outfc) 
@@ -113,15 +114,31 @@ def make_polygons(infc, labelfc, outfc):
 
     return
 
-def update_mapindex(infc, outfc):
-    """ Update the mapindex fc by adding and populating shortmaptitle and longmaptitle fields.
-    longmaptitle  a string that can be used on maps as the "small map title"
+def my_improved_dissolve(oldfc, newfc, identifier, fields):
+    """ Does the dissolve without screwing up the fieldnames. """
+    mappedfields = [[f, "FIRST"] for f in fields]
+    if arcpy.Exists(newfc): arcpy.Delete_management(newfc)
+    arcpy.Dissolve_management(oldfc, newfc, identifier, mappedfields)
+
+    # Unspeakably stupid "feature": they renamed our fields with FIRST_
+    # so put them back to what they were
+    fields = arcpy.ListFields(newfc, "FIRST_*")
+    for f in fields:
+        oldname = f.aliasName
+        AddField(newfc, oldname, f.type, fieldlen=f.length)
+        arcpy.CalculateField_management(newfc, oldname, '!' + f.name + '!', "PYTHON_9.3")
+        arcpy.DeleteField_management(newfc, f.name)
+
+    return
+
+def add_mapindex_fields(fc):
+    """ Update the mapindex by adding CityName field
+  and adding and populating ShortMapTitle and LongMapTitle fields.
     """
 
-    if arcpy.Exists(outfc): arcpy.Delete_management(outfc)
-    arcpy.Dissolve_management(infc, outfc, "PageName")
-    AddField(outfc, "ShortMapTitle", "TEXT", fieldlen=20)
-    AddField(outfc, "LongMapTitle", "TEXT", fieldlen=50)
+    AddField(fc, "CityName",  "TEXT", fieldlen=50) # ORMap requirement
+    AddField(fc, "ShortMapTitle", "TEXT", fieldlen=20)
+    AddField(fc, "LongMapTitle",  "TEXT", fieldlen=50)
 
     orm = ormapnum()
 
@@ -131,7 +148,7 @@ def update_mapindex(infc, outfc):
     LONGTTL  = 2
     OID      = 3
 
-    with arcpy.da.UpdateCursor(outfc, fields) as cursor:
+    with arcpy.da.UpdateCursor(fc, fields) as cursor:
         for row in cursor:
             oid = row[OID]
             o   = row[ORMAPNUM]
@@ -223,9 +240,6 @@ def fixlinetype(fc):
     """ Fix the value of linetype column.
     Returns number of rows updated. """
 
-#    In a more perfect world this field would be correct when transferred from coverages
-#    but I find AML to be to confusing!
-    
     count = 0
 
     if not arcpy.Exists(fc) or int(arcpy.GetCount_management(fc).getOutput(0)) == 0:
@@ -271,33 +285,62 @@ def fix_linetypes(fclist):
             fixlinetype(fc)
     return
 
+def finish_features(workspace):
+
+    saved = arcpy.env.workspace
+    arcpy.env.workspace = workspace
+    cleanup = [] # list of things to clean up when we're done debugging
+
+    # You have to label the polygons first, then dissolve,
+    # because the coverage features don't have any dissolvable attribute
+    # That means you have to preserve attributes in the dissolve operation. Sorry.
+
+    label_polygons("mapindex_lines", "mapindex_points", "mapindex_poly")
+    my_improved_dissolve("mapindex_poly", "mapindex", "PageName", 
+                         ["MapScale", "MapNumber", "ORMapNum", "ReliaCode", "AutoDate", "AutoMethod", "AutoWho", ])
+    arcpy.Delete_management("mapindex_poly")  # intermediary files can be deleted right away
+    cleanup.append("mapindex_lines")
+    cleanup.append("mapindex_points")
+    add_mapindex_fields("mapindex")
+
+    fix_mapscales(["mapindex"])
+
+    label_polygons("taxcode_lines",  "taxcode_points", "taxcode_poly")
+    my_improved_dissolve("taxcode_poly", "taxcode", "TaxCode", 
+                         ["County", "Source", "YearCreated", "ReliaCode", "AutoDate", "AutoMethod", "AutoWho"])
+    arcpy.Delete_management("taxcode_poly")  # intermediary files can be deleted right away
+    cleanup.append("taxcode_lines")
+    cleanup.append("taxcode_points")
+
+    # I could probably do the thing to drop ROAD RAIL WATER polygons here
+    label_polygons("taxlot_lines", "taxlot_points", "taxlot")
+    cleanup.append("taxlot_lines")
+    cleanup.append("taxlot_points")
+
+    fix_mapacres("taxlot")
+    fix_linetypes(["taxlot"]) # This sets LineType to 8,14,32 which I could simplify by dropping RAIL and ROAD...
+
+    for fc in cleanup:
+        print("Time has come to delete %s, go ahead, be brave." % fc)
+        #arcpy.Delete_management(fc)
+
+    arcpy.env.workspace = saved
+
+    return
+
 # ========================================================================
         
 if __name__ == "__main__":
 
     workfolder = "C:\\GeoModel\\Clatsop\\Workfolder"
     target = "t6-10"
-    
     sourcedir = os.path.join(workfolder, target)
     geodatabase = os.path.join(workfolder, "ORMAP_Clatsop.gdb")
 
     #print("Importing features...")
     #import_all_features(sourcedir, geodatabase)
 
-    saved = arcpy.env.workspace
-    arcpy.env.workspace = os.path.join(geodatabase, "taxlots_fd")
-
-    make_polygons("mapindex_lines", "mapindex_points", "mapindex_undissolved")
-    update_mapindex("mapindex_undissolved", "mapindex")
-    fix_mapscales(["mapindex"])
-
-    make_polygons("taxcode_lines",  "taxcode_points",  "taxcode")
-    make_polygons("taxlot_lines",   "taxlot_points",   "taxlot")
-
-    fix_acres("taxlot")
-    fix_linetypes(["taxlot"])
-
-    arcpy.env.workspace = saved
+    finish_features(os.path.join(geodatabase, "taxlots_fd"))
 
     print("coverage_to_geodatabase tests completed.")
 

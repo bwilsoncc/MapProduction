@@ -225,11 +225,11 @@ def merge_annotation(sources, workfolder):
     """ Gather all the annotation feature classes together and merge them into one coverage """
 
     coverages = [
-        "tmpbearingan",
+        "tmptaxlotan",
         "tmpseemapan",
         "tmptaxcodan",
-        "tmptaxlotan",
         "tmptaxmapan",
+        "tmpbearingan",
         ]
     cwd = os.getcwd()
     os.chdir(workfolder)
@@ -251,6 +251,9 @@ def merge_annotation(sources, workfolder):
             fp.write("end\n")
     if sourcecount:
         run_aml(cmdfile)
+        cleaningfile = "cleananno.aml"
+        run_aml(cleaningfile)
+
     os.chdir(cwd)
     return
         
@@ -266,11 +269,11 @@ if __name__ == "__main__":
     sourcefolder = os.path.join(workspace, "Source")
     workfolder = os.path.join(workspace, "Workfolder")
 
+    os.chdir(workfolder)
     # Do everything  
-    os.chdir(workspace)
     townships = glob("t[4-9]-*")
     # Grant project area
-    townships = ["t6-6", "t6-7", "t7-6", "t7-7", "t8-6", "t8-7", "t9-6", "t9-7"]
+    #townships = ["t6-6", "t6-7", "t7-6", "t7-7", "t8-6", "t8-7", "t9-6", "t9-7"]
     # Uncomment to select 2 townships for quick testing
     #townships = [ "t8-6", "t8-7" ]
     # ...or one row of townships
@@ -295,7 +298,7 @@ if __name__ == "__main__":
             logging.warning("Preprocessing completed with errors.")
 
     merge_annotation(townships, workfolder)
-
+ 
     if ok: 
         print("All done!")
     else:

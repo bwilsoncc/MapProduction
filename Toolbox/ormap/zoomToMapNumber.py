@@ -110,11 +110,16 @@ def update_locator_maps(mxd, orm):
     orm = ormap object, used in query definitions
 
     You can either create a mask or a highlighter based on queries in the configuration.
-    Set up query definitions in each dataframe to control this. """
+    Set up query definitions in each dataframe to control this. 
+    
+    Returns the (x,y) location for the next stacked layout element. """
 
     global sections_x, sections_y, qsections_x, qsections_y
 
-    #aprint("Updating locator maps")
+    # We're trying a stacked layout here. The county-wide locator will be at the top,
+    # and successive features will be below at suitable spacings.
+
+    x = y = 0
 
     for dfname,layers,extlayername,scale,fcount in [
             (ORMAP.LocatorDF,  ORMAP.LocatorLayers,  ORMAP.LocatorExtentLayer,  ORMAP.LocatorScale,  ORMAP.LocatorFeatureCount),
@@ -145,50 +150,56 @@ def update_locator_maps(mxd, orm):
             # if a fixed scale is specified in config, use it
             if scale: df.scale  = scale
 
-            # Now's our chance to hide (or show) locator maps!!
-            visibility = True
-            try:
-                fc_layer = GetLayer(mxd,df,fcount)
-                c = int(arcpy.GetCount_management(fc_layer).getOutput(0))
-                if c == 0:
-                    visibility = False
-                    aprint("Nothing to see in layer \"%s\"." % extlayername)
-            except Exception as e:
-                aprint("Error in %s, %s" % (extlayername, e))
+        # Now's our chance to hide (or show) locator maps!!
 
-            elm = None
-            try:
-                elm = MAP.ListLayoutElements(mxd, "DATAFRAME_ELEMENT", dfname)[0]
-            except IndexError:
-                pass
+        visibility = True
+        try:
+            fc_layer = GetLayer(mxd,df,fcount)
+            c = int(arcpy.GetCount_management(fc_layer).getOutput(0))
+            if c == 0:
+                visibility = False
+                aprint("Nothing to see in layer \"%s\"." % extlayername)
+        except Exception as e:
+            aprint("Error in %s, %s" % (extlayername, e))
 
-            if elm:
-                if on_page(elm, mxd):
-                    locator_positions[elm.name] = (elm.elementPositionX, elm.elementPositionY)
+        elm = None
+        try:
+            elm = MAP.ListLayoutElements(mxd, "DATAFRAME_ELEMENT", dfname)[0]
+        except IndexError:
+            pass
 
-                x = y = 0
-                try:
-                    x = locator_positions[elm.name][0]
-                    y = locator_positions[elm.name][1]
-                except:
-                    aprint("Can't figure out where to put \"%s\"" % elm.name)
+        if elm:
+                # leftover from before stacking was implemented
+#                if on_page(elm, mxd):
+#                    # this element is on the page so save its location for future use
+#                    locator_positions[elm.name] = (elm.elementPositionX, elm.elementPositionY)
+#                x=y=0
+#                try:
+#                    x = locator_positions[elm.name][0]
+#                    y = locator_positions[elm.name][1]
+#                except:
+#                    aprint("Can't figure out where to put \"%s\"" % elm.name)
 
-                if visibility:
-                    if x <> 0 and y <> 0:
-                        elm.elementPositionX = x
-                        elm.elementPositionY = y
-                else:
-                    elm.elementPositionX = mxd.pageSize.width + 2
-                    elm.elementPositionY = y
+            if x <> 0 and y <> 0:
+                # LocatorDF won't get moved because it's always visible
+                elm.elementPositionX = x
+                elm.elementPositionY = y
 
-    return
+            if not visibility:
+                elm.elementPositionX = mxd.pageSize.width + 2
+                elm.elementPositionY = y
+
+            if on_page(elm, mxd):
+                # Set position for the next element below this one
+                x = elm.elementPositionX
+                y = elm.elementPositionY - (elm.elementHeight + .15)
+
+    return (x,y)
 
 
 def update_page_elements(mxd, df, orm):
-    global can_x, can_y
-
     #aprint("Setting up page layout")
-    
+   
     select_scalebar(mxd, df.scale)
   
     try:
@@ -197,30 +208,34 @@ def update_page_elements(mxd, df, orm):
         elm.text = "PLOT DATE: %2d/%02d/%4d" % (now.month, now.day, now.year)
     except IndexError:
         aprint("Could not find a PlotDate text element. Skipping.")
-    
+
+    return
+
+def update_cancelled(mxd, orm, x,y):
+    global can_x, can_y
+
     can_elm = None
     try:
         can_elm = MAP.ListLayoutElements(mxd, "GRAPHIC_ELEMENT", "can*")[0]
     except IndexError:
         aprint("Could not find a cancelled taxlots group element. Skipping.")
-        pass
+        return
 
-    if can_elm:
-        if on_page(can_elm,mxd):
-            can_x = can_elm.elementPositionX
-            can_y = can_elm.elementPositionY
-        elif can_x == 0 and can_y == 0:
-            aprint("The cancelled taxlots element \"%s\" is not on the map so it will never print." % can_elm.name)
+#    if on_page(can_elm,mxd):
+#        can_x = can_elm.elementPositionX
+#        can_y = can_elm.elementPositionY
+#    elif can_x == 0 and can_y == 0:
+#        aprint("The cancelled taxlots element \"%s\" is not on the map so it will never print." % can_elm.name)
 
-        cancelled_taxlots = can.get_list(orm.dotted)
-        aprint("Cancelled taxlots: %d" % len(cancelled_taxlots))
-        if len(cancelled_taxlots) == 0:
-            # Move the cancelled taxlot table off the layout
-            can_elm.elementPositionX = mxd.pageSize.width + 3
-            can_elm.elementPositionY = can_y
-        elif can_x or can_y:
-            can_elm.elementPositionX = can_x
-            can_elm.elementPositionY = can_y
+    cancelled_taxlots = can.get_list(orm.dotted)
+    aprint("Cancelled taxlots: %d" % len(cancelled_taxlots))
+    if len(cancelled_taxlots) == 0:
+        # Move the cancelled taxlot table off the layout
+        can_elm.elementPositionX = mxd.pageSize.width + 3
+        can_elm.elementPositionY = y
+    else:
+        can_elm.elementPositionX = x
+        can_elm.elementPositionY = y
 
     populate_cancelled_taxlot_table(mxd, cancelled_taxlots)
             
@@ -295,7 +310,8 @@ def update_page_layout(mxd, pagename):
     #aprint("%s -> %s -> %s" % (pagename, orm.dotted, orm.longmaptitle))
 
     update_page_elements(mxd, maindf, orm)
-    update_locator_maps(mxd, orm)
+    (x,y) = update_locator_maps(mxd, orm)
+    update_cancelled(mxd, orm, x,y)
 
     arcpy.RefreshActiveView()
 
