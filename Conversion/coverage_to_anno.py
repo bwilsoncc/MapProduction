@@ -42,20 +42,27 @@ def fixannoclass(currentclassid, level, m):
             pass
     return classid
 
-def __fix_fontsize(outputfc):
-    logging.info("fix_fontsize(%s)" % outputfc)
-    arcpy.CalculateField_management(outputfc, "FontSize", "!MAPSIZE!", "PYTHON", "")
-    return
-
 def __fix_caret(fc):
     """ Change carets to degree character in label fields in an annotation featureclass. """
-    logging.info("fix_caret(%s)" % fc)
     fields = ListFieldNames(fc)
     if "TextString" in fields:
+        logging.info("fix_caret(%s)" % fc)
         arcpy.CalculateField_management(fc, "TextString", "!TextString!.replace('^',u'\xb0')", "PYTHON", "")
+    else:
+        logging.warning("fix_caret(%s) HAS NO TextString field, NOTHING changed here." % fc)
     return True
 
-def fix_anno(fc):
+def __repair_seemap(fc):
+    """ Change the numbers to add appropriate leading zero. """
+
+    # Townships in Clatsop county only range from 4...9
+    # Ranges can be 1..11 so make sure 2 digits are handled
+    codeblock = """import re
+def f(x):
+  return re.sub(r'([456789]) (\d+)', lambda m: "%s %02d" % (m.group(1), int(m.group(2))), x)"""
+    arcpy.CalculateField_management(fc, "TextString", "f( !TextString!)", "PYTHON_9.3", codeblock)
+
+def __fix_anno(fc):
     """ Fix the annotation feature class. 
     Make all the carets into "degree" symbols.
     Make all the font sizes something reasonable."""
@@ -75,40 +82,15 @@ def fix_anno(fc):
 
 # Read all the details
 # http://desktop.arcgis.com/en/arcmap/latest/tools/conversion-toolbox/import-coverage-annotation.htm
-
-def merge_anno(srclist, dst):
-    """Merge annotation from srclist to dst fc.
-    'srclist' can be either one fc or a list.
-    NB Can't use coverage annotation as a source, has to be a fc in the same database as dest.
-    """
-    success = True
-    reference_scale = 1200.0
-    try: 
-        logging.info("merge_anno(%s, %s)" % (srclist, dst))
-        arcpy.AppendAnnotation_management(srclist, dst, reference_scale, 
-                                         "CREATE_CLASSES", 
-                                         "NO_SYMBOL_REQUIRED", 
-                                         "AUTO_CREATE", "AUTO_UPDATE")
-        # I should delete the source fc's here, right? Otherwise we end up with about 100 extra fc's.
-        if isinstance(srclist,list):
-            for s in srclist:
-                arcpy.Delete_management(s)
-        else:
-            arcpy.Delete_management(srclist)
-
-    except Exception as e:
-        logging.error("merge_anno(%s, %s), \"%s\"" % (srclist, dst, e))
-        success = False
-
-    return success
     
-def convert_anno(annolayer, outputfc):
+def __convert_anno(annolayer, outputfc):
     """ Convert a single coverage annotation to feature class annotation. 
     Output feature class is in a geodatabase.
     """
     logging.info("convert_anno(%s, %s)" % (annolayer.name, outputfc))
 
-    # IGNORE SELECTIONS! Otherwise I end up with annotation feature classes with one row...
+    # IGNORE SELECTIONS! I tend to create selections in the MXD and then save it thatm means if
+    # I don't ignore selections I end up with annotation feature classes with one row...
     arcpy.SelectLayerByAttribute_management(annolayer, "CLEAR_SELECTION")
     annolayer.visible = True
 
@@ -134,8 +116,7 @@ def convert_anno(annolayer, outputfc):
             # I tried creating empty template anno fc's but when I used AppendAnnotation_management,
             # it created a whole new set of annotation classes in the append operation
             # instead of using the ones already in the template so 
-            # I tore that code out.
-
+            # I tore that code out 
             arcpy.ImportCoverageAnnotation_conversion(annolayer, outputfc, 1200.0, "CLASSES_FROM_LEVELS")
             
             #arcpy.AppendAnnotation_management(tmpfc, outputfc, 1200, create_single_class="CREATE_CLASSES")
@@ -150,6 +131,7 @@ def import_anno(mxdname, geodatabase):
 
     workspace = os.path.join(geodatabase, "annotation_fd")
 
+    # too late, can't do this here. dang arcgis limitation
 #    infc = os.path.join(workspace, all_taxlot_anno)
 #    whereclause = "TextString='99-99' OR TextString='ROAD' OR TextString='WATER' OR TextString='RAIL' OR TextString LIKE 'GAP%'"
 #    dropfeatures(infc, whereclause)
@@ -169,16 +151,19 @@ def import_anno(mxdname, geodatabase):
     for (layername, fc) in layers:
         annolayer = MAP.ListLayers(mxd, layername, df)[0]
         outputfc = os.path.join(workspace, fc)
-        convert_anno(annolayer, outputfc)
-        fix_anno(outputfc)
+        __convert_anno(annolayer, outputfc)
+        __fix_anno(outputfc)
         pass
     del mxd # Release schema locks, hopefully.
+
+    arcpy.env.workspace = workspace
+    __repair_seemap("seemap_anno")
 
     return
 
 # ========================================================================
-
 if __name__ == "__main__":
+
 
     MYNAME  = os.path.splitext(os.path.split(__file__)[1])[0]
     LOGFILE = MYNAME + ".log"
@@ -188,6 +173,7 @@ if __name__ == "__main__":
     geodatabase = os.path.join(workspace,"ORMAP_Clatsop.gdb")
     mxdname = os.path.join(workspace, "Annotation.MXD")
     print("Writing log to %s" % LOGFILE)
+
     import_anno(mxdname, geodatabase)
 
     print("Tests completed.")

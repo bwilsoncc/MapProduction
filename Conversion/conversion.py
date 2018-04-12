@@ -110,7 +110,7 @@ if __name__ == "__main__":
         import_features(workfolder, gdb)
 
     logging.info("Merge annotation")
-    merge_annotation(townships, homefolder) # Make one big coverage for each annotation group
+    merge_annotation(townships, homefolder) # Use AML to make one big coverage for each annotation group
     
     # Before you get here, use Arcmap to adjust settings in the MXD to control font color and size...
     mxdname = os.path.join(homefolder, "Annotation.mxd")

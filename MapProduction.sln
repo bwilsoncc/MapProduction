@@ -3,7 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2026
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "MapProduction", "MapProduction.pyproj", "{00B18597-48C9-4E9D-B151-85F25DC6DFE2}"
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "Conversion", "Conversion\Conversion.pyproj", "{B8E9A571-D54F-47A7-A431-6F936DECC000}"
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "Toolbox", "Toolbox\Toolbox.pyproj", "{E55E1FCB-0D72-4D1F-A7FB-F631888383D1}"
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "ormap module", "Toolbox\ormap\ormap.pyproj", "{4FC9F75F-DE56-4F19-95F7-0711A0B36D4C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,8 +15,12 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{00B18597-48C9-4E9D-B151-85F25DC6DFE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{00B18597-48C9-4E9D-B151-85F25DC6DFE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8E9A571-D54F-47A7-A431-6F936DECC000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8E9A571-D54F-47A7-A431-6F936DECC000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E55E1FCB-0D72-4D1F-A7FB-F631888383D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E55E1FCB-0D72-4D1F-A7FB-F631888383D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FC9F75F-DE56-4F19-95F7-0711A0B36D4C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FC9F75F-DE56-4F19-95F7-0711A0B36D4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

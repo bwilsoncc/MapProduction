@@ -25,11 +25,6 @@
   <ItemGroup>
     <Compile Include="clean_schema.py" />
     <Compile Include="Config File Templates\ORMAP_18x24MapConfig.py" />
-    <Compile Include="conversion.py" />
-    <Compile Include="coverage_to_anno.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="coverage_to_geodatabase.py" />
     <Compile Include="fixormapnum.py" />
     <Compile Include="fix_layernames.py">
       <SubType>Code</SubType>
@@ -38,7 +33,6 @@
     <Compile Include="mapscale_info.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="preprocess.py" />
     <Compile Include="Toolbox\ormap\arc_utilities.py" />
     <Compile Include="Toolbox\ormap\cancellations.py" />
     <Compile Include="Toolbox\ormap\mapnum.py" />
